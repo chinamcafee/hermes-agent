@@ -18,6 +18,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,16 @@ def _hash_chat_id(value: str) -> str:
         prefix = value[:colon]
         return f"{prefix}:{_hash_id(value[colon + 1:])}"
     return _hash_id(value)
+
+
+def _team_session_prefix(team_context: Dict[str, Any] | None) -> str:
+    if not isinstance(team_context, dict):
+        return ""
+    org_id = str(team_context.get("org_id") or "").strip()
+    team_id = str(team_context.get("team_id") or "").strip()
+    if not org_id or not team_id:
+        return ""
+    return f"team:{quote(org_id, safe='')}:{quote(team_id, safe='')}"
 
 
 from .config import (
@@ -91,6 +102,7 @@ class SessionSource:
     guild_id: Optional[str] = None  # Discord guild / Slack workspace / Matrix server scope
     parent_chat_id: Optional[str] = None  # Parent channel when chat_id refers to a thread
     message_id: Optional[str] = None  # ID of the triggering message (for pin/reply/react)
+    team_context: Optional[Dict[str, Any]] = None  # Trusted Team Cloud context resolved by Gateway
     
     @property
     def description(self) -> str:
@@ -134,6 +146,8 @@ class SessionSource:
             d["parent_chat_id"] = self.parent_chat_id
         if self.message_id:
             d["message_id"] = self.message_id
+        if self.team_context:
+            d["team_context"] = dict(self.team_context)
         return d
 
     @classmethod
@@ -152,6 +166,7 @@ class SessionSource:
             guild_id=data.get("guild_id"),
             parent_chat_id=data.get("parent_chat_id"),
             message_id=data.get("message_id"),
+            team_context=data.get("team_context") if isinstance(data.get("team_context"), dict) else None,
         )
     
 
@@ -633,11 +648,18 @@ def build_session_key(
 
         if dm_chat_id:
             if source.thread_id:
-                return f"agent:main:{platform}:dm:{dm_chat_id}:{source.thread_id}"
-            return f"agent:main:{platform}:dm:{dm_chat_id}"
+                key = f"agent:main:{platform}:dm:{dm_chat_id}:{source.thread_id}"
+            else:
+                key = f"agent:main:{platform}:dm:{dm_chat_id}"
+            prefix = _team_session_prefix(getattr(source, "team_context", None))
+            return f"{prefix}:{key}" if prefix else key
         if source.thread_id:
-            return f"agent:main:{platform}:dm:{source.thread_id}"
-        return f"agent:main:{platform}:dm"
+            key = f"agent:main:{platform}:dm:{source.thread_id}"
+            prefix = _team_session_prefix(getattr(source, "team_context", None))
+            return f"{prefix}:{key}" if prefix else key
+        key = f"agent:main:{platform}:dm"
+        prefix = _team_session_prefix(getattr(source, "team_context", None))
+        return f"{prefix}:{key}" if prefix else key
 
     participant_id = source.user_id_alt or source.user_id
     if participant_id and source.platform == Platform.WHATSAPP:
@@ -662,7 +684,9 @@ def build_session_key(
     if isolate_user and participant_id:
         key_parts.append(str(participant_id))
 
-    return ":".join(key_parts)
+    key = ":".join(key_parts)
+    prefix = _team_session_prefix(getattr(source, "team_context", None))
+    return f"{prefix}:{key}" if prefix else key
 
 
 class SessionStore:

@@ -1,0 +1,431 @@
+name: hermes-team-cloud
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.2-pg18-trixie}
+    platform: ${HERMES_TEAM_PLATFORM:-linux/arm64}
+    environment:
+      POSTGRES_USER: hermes_superuser
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/team_cloud_postgres_password
+    secrets:
+      - team_cloud_postgres_password
+    volumes:
+      - team_postgres_data:/var/lib/postgresql
+      - ./backups:/backups
+    ports:
+      - "54329:5432"
+    networks:
+      - team-data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hermes_superuser -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres-init:
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.2-pg18-trixie}
+    platform: ${HERMES_TEAM_PLATFORM:-linux/arm64}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    secrets:
+      - team_cloud_postgres_password
+      - team_cloud_database_url
+      - team_cloud_casdoor_db_password
+      - team_cloud_spicedb_db_password
+    volumes:
+      - ./init/postgres-init.sh:/init/postgres-init.sh:ro
+    networks:
+      - team-data
+    entrypoint: ["bash", "/init/postgres-init.sh"]
+    restart: "no"
+
+  casdoor-init:
+    image: ${ALPINE_IMAGE:-alpine:3.22.2}
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+    secrets:
+      - team_cloud_casdoor_db_password
+    volumes:
+      - team_casdoor_conf:/casdoor-conf
+      - ./casdoor/app.conf.template:/templates/app.conf.template:ro
+    networks:
+      - team-control
+      - team-data
+    command:
+      - sh
+      - -eu
+      - -c
+      - |
+        db_password="$$(cat /run/secrets/team_cloud_casdoor_db_password)"
+        sed "s|__CASDOOR_DB_PASSWORD__|$${db_password}|g" \
+          /templates/app.conf.template > /casdoor-conf/app.conf
+
+  casdoor:
+    image: ${CASDOOR_IMAGE:-casbin/casdoor:3.60.1}
+    platform: ${HERMES_TEAM_PLATFORM:-linux/arm64}
+    depends_on:
+      casdoor-init:
+        condition: service_completed_successfully
+    volumes:
+      - team_casdoor_conf:/conf
+    ports:
+      - "18000:8000"
+    networks:
+      - team-edge
+      - team-control
+      - team-data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/api/health || nc -z localhost 8000"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  mailpit:
+    image: ${MAILPIT_IMAGE:-axllent/mailpit:v1.29.5}
+    ports:
+      - "18025:8025"
+      - "11025:1025"
+    networks:
+      - team-edge
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8025/api/v1/info || nc -z localhost 8025"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  spicedb-migrate:
+    image: ${SPICEDB_IMAGE:-ghcr.io/authzed/spicedb:v1.53.0-debug}
+    platform: ${HERMES_TEAM_PLATFORM:-linux/arm64}
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+    secrets:
+      - team_cloud_spicedb_db_password
+    networks:
+      - team-data
+    entrypoint:
+      - sh
+      - -eu
+      - -c
+      - |
+        db_password="$$(cat /run/secrets/team_cloud_spicedb_db_password)"
+        exec spicedb migrate head \
+          --datastore-engine postgres \
+          --datastore-conn-uri "postgres://spicedb_user:$${db_password}@postgres:5432/spicedb?sslmode=disable"
+    restart: "no"
+
+  spicedb:
+    image: ${SPICEDB_IMAGE:-ghcr.io/authzed/spicedb:v1.53.0-debug}
+    platform: ${HERMES_TEAM_PLATFORM:-linux/arm64}
+    depends_on:
+      spicedb-migrate:
+        condition: service_completed_successfully
+    secrets:
+      - team_cloud_spicedb_db_password
+      - team_cloud_spicedb_preshared_key
+    ports:
+      - "50051:50051"
+      - "9091:9090"
+    volumes:
+      - team_spicedb_cache:/var/lib/spicedb
+    networks:
+      - team-control
+      - team-data
+    entrypoint:
+      - sh
+      - -eu
+      - -c
+      - |
+        db_password="$$(cat /run/secrets/team_cloud_spicedb_db_password)"
+        preshared_key="$$(cat /run/secrets/team_cloud_spicedb_preshared_key)"
+        exec spicedb serve \
+          --grpc-preshared-key "$${preshared_key}" \
+          --datastore-engine postgres \
+          --datastore-conn-uri "postgres://spicedb_user:$${db_password}@postgres:5432/spicedb?sslmode=disable" \
+          --http-enabled \
+          --http-addr ":8443" \
+          --metrics-addr ":9090"
+    healthcheck:
+      test: ["CMD-SHELL", "spicedb version >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  spicedb-schema-load:
+    image: ${ZED_IMAGE:-ghcr.io/authzed/zed:v1.1.1-debug}
+    depends_on:
+      spicedb:
+        condition: service_healthy
+    secrets:
+      - team_cloud_spicedb_preshared_key
+    volumes:
+      - ../../teamDoc/GADoc/artifacts/spicedb/schema-v0.zed:/schema/schema-v0.zed:ro
+    networks:
+      - team-control
+    entrypoint:
+      - sh
+      - -eu
+      - -c
+      - |
+        token="$$(cat /run/secrets/team_cloud_spicedb_preshared_key)"
+        zed schema write /schema/schema-v0.zed --insecure --endpoint spicedb:50051 --token "$${token}"
+    restart: "no"
+
+  minio:
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z}
+    platform: ${HERMES_TEAM_PLATFORM:-linux/arm64}
+    environment:
+      MINIO_ROOT_USER: hermes_minio
+    secrets:
+      - team_cloud_minio_root_password
+    volumes:
+      - team_minio_data:/data
+      - ./backups:/backups
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    networks:
+      - team-edge
+      - team-data
+    entrypoint:
+      - sh
+      - -eu
+      - -c
+      - |
+        export MINIO_ROOT_PASSWORD="$$(cat /run/secrets/team_cloud_minio_root_password)"
+        exec minio server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  minio-init:
+    image: ${MINIO_MC_IMAGE:-minio/mc:RELEASE.2025-08-13T08-35-41Z}
+    depends_on:
+      minio:
+        condition: service_healthy
+    secrets:
+      - team_cloud_minio_root_password
+    networks:
+      - team-data
+    entrypoint:
+      - sh
+      - -eu
+      - -c
+      - |
+        root_password="$$(cat /run/secrets/team_cloud_minio_root_password)"
+        mc alias set local http://minio:9000 hermes_minio "$${root_password}"
+        for bucket in hermes-personal-backups hermes-org-exports hermes-attachments hermes-document-sources hermes-restore-staging; do
+          mc mb --ignore-existing "local/$${bucket}"
+        done
+    restart: "no"
+
+  team-migrate:
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.2-pg18-trixie}
+    platform: ${HERMES_TEAM_PLATFORM:-linux/arm64}
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+    secrets:
+      - team_cloud_database_url
+    volumes:
+      - ../../team_cloud/sql_migrations:/migrations:ro
+    networks:
+      - team-data
+    entrypoint:
+      - sh
+      - -eu
+      - -c
+      - |
+        database_url="$$(cat /run/secrets/team_cloud_database_url)"
+        for migration in /migrations/*.sql; do
+          psql --set ON_ERROR_STOP=1 "$${database_url}" -f "$${migration}"
+        done
+    restart: "no"
+
+  team-api:
+    build:
+      context: ../..
+      dockerfile: deploy/team-cloud/team-cloud.Dockerfile
+      args:
+        TEAM_CLOUD_PYTHON_BASE_IMAGE: ${TEAM_CLOUD_PYTHON_BASE_IMAGE:-python:3.13-slim-bookworm}
+    image: ${TEAM_API_IMAGE:-hermes-team-api:dev}
+    depends_on:
+      postgres-init:
+        condition: service_completed_successfully
+      team-migrate:
+        condition: service_completed_successfully
+      spicedb-schema-load:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+      casdoor:
+        condition: service_started
+    environment:
+      TEAM_CLOUD_ENVIRONMENT: local
+      TEAM_CLOUD_BIND_HOST: 0.0.0.0
+      TEAM_CLOUD_API_PORT: "8780"
+      TEAM_CLOUD_LOG_LEVEL: INFO
+      TEAM_CLOUD_JWT_ISSUER: http://localhost:18000
+      TEAM_CLOUD_CASDOOR_BASE_URL: http://casdoor:8000
+      TEAM_CLOUD_CASDOOR_CLIENT_ID: hermes-team-api
+      TEAM_CLOUD_SPICEDB_ENDPOINT: spicedb:50051
+      TEAM_CLOUD_MINIO_ENDPOINT: http://minio:9000
+      TEAM_CLOUD_MINIO_ACCESS_KEY: hermes_team
+      TEAM_CLOUD_DATABASE_URL_FILE: /run/secrets/team_cloud_database_url
+      TEAM_CLOUD_CASDOOR_CLIENT_SECRET_FILE: /run/secrets/team_cloud_casdoor_client_secret
+      TEAM_CLOUD_SPICEDB_PRESHARED_KEY_FILE: /run/secrets/team_cloud_spicedb_preshared_key
+      TEAM_CLOUD_MINIO_SECRET_KEY_FILE: /run/secrets/team_cloud_minio_secret_key
+      TEAM_CLOUD_ENCRYPTION_KEY_FILE: /run/secrets/team_cloud_encryption_key
+      TEAM_CLOUD_BACKUP_MOUNT_PATH: /backups
+      TEAM_CLOUD_TLS_CERT_FILE: /etc/hermes-team-cloud/tls/dev-cert.pem
+      TEAM_CLOUD_TLS_KEY_FILE: /etc/hermes-team-cloud/tls/dev-key.pem
+    secrets:
+      - team_cloud_database_url
+      - team_cloud_casdoor_client_secret
+      - team_cloud_spicedb_preshared_key
+      - team_cloud_minio_secret_key
+      - team_cloud_encryption_key
+    volumes:
+      - ./backups:/backups
+      - ./certs/dev:/etc/hermes-team-cloud/tls:ro
+    ports:
+      - "8780:8780"
+    networks:
+      - team-edge
+      - team-control
+      - team-data
+    command: ["python", "-m", "uvicorn", "team_cloud.api:create_app", "--factory", "--host", "0.0.0.0", "--port", "8780"]
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request\nurllib.request.urlopen('http://localhost:8780/healthz', timeout=3).read()\nPY"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  team-worker:
+    build:
+      context: ../..
+      dockerfile: deploy/team-cloud/team-cloud.Dockerfile
+      args:
+        TEAM_CLOUD_PYTHON_BASE_IMAGE: ${TEAM_CLOUD_PYTHON_BASE_IMAGE:-python:3.13-slim-bookworm}
+    image: ${TEAM_WORKER_IMAGE:-hermes-team-worker:dev}
+    depends_on:
+      team-api:
+        condition: service_healthy
+    environment:
+      TEAM_CLOUD_ENVIRONMENT: local
+      TEAM_CLOUD_LOG_LEVEL: INFO
+      TEAM_CLOUD_JWT_ISSUER: http://localhost:18000
+      TEAM_CLOUD_CASDOOR_BASE_URL: http://casdoor:8000
+      TEAM_CLOUD_CASDOOR_CLIENT_ID: hermes-team-api
+      TEAM_CLOUD_SPICEDB_ENDPOINT: spicedb:50051
+      TEAM_CLOUD_MINIO_ENDPOINT: http://minio:9000
+      TEAM_CLOUD_MINIO_ACCESS_KEY: hermes_team
+      TEAM_CLOUD_DATABASE_URL_FILE: /run/secrets/team_cloud_database_url
+      TEAM_CLOUD_CASDOOR_CLIENT_SECRET_FILE: /run/secrets/team_cloud_casdoor_client_secret
+      TEAM_CLOUD_SPICEDB_PRESHARED_KEY_FILE: /run/secrets/team_cloud_spicedb_preshared_key
+      TEAM_CLOUD_MINIO_SECRET_KEY_FILE: /run/secrets/team_cloud_minio_secret_key
+      TEAM_CLOUD_ENCRYPTION_KEY_FILE: /run/secrets/team_cloud_encryption_key
+      TEAM_CLOUD_BACKUP_MOUNT_PATH: /backups
+      TEAM_CLOUD_TLS_CERT_FILE: /etc/hermes-team-cloud/tls/dev-cert.pem
+      TEAM_CLOUD_TLS_KEY_FILE: /etc/hermes-team-cloud/tls/dev-key.pem
+    secrets:
+      - team_cloud_database_url
+      - team_cloud_casdoor_client_secret
+      - team_cloud_spicedb_preshared_key
+      - team_cloud_minio_secret_key
+      - team_cloud_encryption_key
+    volumes:
+      - ./backups:/backups
+      - ./certs/dev:/etc/hermes-team-cloud/tls:ro
+    networks:
+      - team-control
+      - team-data
+    command: ["python", "-m", "team_cloud.worker"]
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nfrom team_cloud.worker import create_worker\nassert create_worker().heartbeat()['status'] == 'ok'\nPY"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  team-web:
+    image: ${TEAM_WEB_IMAGE:-nginx:1.29.3-alpine}
+    volumes:
+      - ./web-shell:/usr/share/nginx/html:ro
+      - ./web-shell/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs/dev:/etc/hermes-team-cloud/tls:ro
+    ports:
+      - "8781:3000"
+    networks:
+      - team-edge
+    command: ["nginx", "-g", "daemon off;"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  hermes-runtime:
+    build:
+      context: ../..
+      dockerfile: deploy/team-cloud/team-cloud.Dockerfile
+      args:
+        TEAM_CLOUD_PYTHON_BASE_IMAGE: ${TEAM_CLOUD_PYTHON_BASE_IMAGE:-python:3.13-slim-bookworm}
+    image: ${HERMES_RUNTIME_IMAGE:-hermes-team-runtime:dev}
+    depends_on:
+      team-api:
+        condition: service_healthy
+    volumes:
+      - team_runtime_home:/root/.hermes
+      - ./certs/dev:/etc/hermes-team-cloud/tls:ro
+    networks:
+      - team-control
+    command:
+      - python
+      - -c
+      - |
+        import json, time
+        while True:
+            print(json.dumps({"service": "hermes-runtime", "status": "waiting_for_p2_runtime_bridge"}), flush=True)
+            time.sleep(30)
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import pathlib; assert pathlib.Path('/root/.hermes').exists()\""]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+networks:
+  team-edge: {}
+  team-control: {}
+  team-data: {}
+
+volumes:
+  team_postgres_data: {}
+  team_minio_data: {}
+  team_casdoor_conf: {}
+  team_spicedb_cache: {}
+  team_runtime_home: {}
+
+secrets:
+  team_cloud_database_url:
+    file: ./secrets/team_cloud_database_url.txt
+  team_cloud_casdoor_client_secret:
+    file: ./secrets/team_cloud_casdoor_client_secret.txt
+  team_cloud_spicedb_preshared_key:
+    file: ./secrets/team_cloud_spicedb_preshared_key.txt
+  team_cloud_minio_secret_key:
+    file: ./secrets/team_cloud_minio_secret_key.txt
+  team_cloud_encryption_key:
+    file: ./secrets/team_cloud_encryption_key.txt
+  team_cloud_postgres_password:
+    file: ./secrets/team_cloud_postgres_password.txt
+  team_cloud_casdoor_db_password:
+    file: ./secrets/team_cloud_casdoor_db_password.txt
+  team_cloud_spicedb_db_password:
+    file: ./secrets/team_cloud_spicedb_db_password.txt
+  team_cloud_minio_root_password:
+    file: ./secrets/team_cloud_minio_root_password.txt

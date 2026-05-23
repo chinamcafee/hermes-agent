@@ -32,6 +32,7 @@ from agent.display import (
 from agent.tool_guardrails import ToolGuardrailDecision
 from agent.tool_dispatch_helpers import (
     _is_destructive_command,
+    build_pre_tool_call_hook_kwargs,
     _is_multimodal_tool_result,
     _multimodal_text_summary,
     _append_subdir_hint_to_multimodal,
@@ -127,7 +128,13 @@ def execute_tool_calls_concurrent(agent, assistant_message, messages: list, effe
         try:
             from hermes_cli.plugins import get_pre_tool_call_block_message
             block_message = get_pre_tool_call_block_message(
-                function_name, function_args, task_id=effective_task_id or "",
+                function_name,
+                function_args,
+                **build_pre_tool_call_hook_kwargs(
+                    agent,
+                    task_id=effective_task_id or "",
+                    tool_call_id=getattr(tool_call, "id", "") or "",
+                ),
             )
         except Exception:
             block_message = None
@@ -501,7 +508,13 @@ def execute_tool_calls_sequential(agent, assistant_message, messages: list, effe
         try:
             from hermes_cli.plugins import get_pre_tool_call_block_message
             _block_msg = get_pre_tool_call_block_message(
-                function_name, function_args, task_id=effective_task_id or "",
+                function_name,
+                function_args,
+                **build_pre_tool_call_hook_kwargs(
+                    agent,
+                    task_id=effective_task_id or "",
+                    tool_call_id=getattr(tool_call, "id", "") or "",
+                ),
             )
         except Exception:
             pass

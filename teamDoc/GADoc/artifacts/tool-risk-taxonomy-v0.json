@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "name": "tool-risk-taxonomy-v0",
+  "categories": [
+    "safe",
+    "network",
+    "file",
+    "terminal",
+    "destructive",
+    "secret"
+  ],
+  "approval_required": [
+    "terminal",
+    "destructive",
+    "secret"
+  ],
+  "tool_defaults": {
+    "memory": "safe",
+    "todo": "safe",
+    "clarify": "safe",
+    "skills_list": "safe",
+    "skill_view": "safe",
+    "skill_manage": "file",
+    "web_search": "network",
+    "web_extract": "network",
+    "x_search": "network",
+    "browser_navigate": "network",
+    "browser_snapshot": "network",
+    "browser_click": "network",
+    "browser_type": "network",
+    "browser_scroll": "network",
+    "browser_back": "network",
+    "browser_press": "network",
+    "browser_get_images": "network",
+    "browser_vision": "network",
+    "browser_console": "network",
+    "browser_cdp": "network",
+    "browser_dialog": "network",
+    "send_message": "network",
+    "ha_list_entities": "network",
+    "ha_get_state": "network",
+    "ha_list_services": "network",
+    "ha_call_service": "destructive",
+    "read_file": "file",
+    "write_file": "file",
+    "patch": "file",
+    "search_files": "file",
+    "vision_analyze": "file",
+    "image_generate": "file",
+    "text_to_speech": "file",
+    "session_search": "safe",
+    "terminal": "terminal",
+    "process": "terminal",
+    "execute_code": "terminal",
+    "delegate_task": "terminal",
+    "cronjob": "terminal",
+    "computer_use": "terminal",
+    "kanban_show": "safe",
+    "kanban_list": "safe",
+    "kanban_complete": "safe",
+    "kanban_block": "safe",
+    "kanban_heartbeat": "safe",
+    "kanban_comment": "safe",
+    "kanban_create": "safe",
+    "kanban_link": "safe",
+    "kanban_unblock": "safe"
+  },
+  "escalation_rules": [
+    {
+      "name": "secret_argument_key",
+      "category": "secret",
+      "description": "Any argument key containing token, password, secret, credential, private_key, or api_key."
+    },
+    {
+      "name": "terminal_destructive_command",
+      "category": "destructive",
+      "description": "Terminal commands matching rm -r, sudo, dd if=, mkfs, diskutil, drop table, or truncate table."
+    }
+  ]
+}

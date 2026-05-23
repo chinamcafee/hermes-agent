@@ -1,0 +1,81 @@
+Date : 2026-05-22 19:40:55
+Directory : /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent
+Total : 36 files,  1587 codes, -17 comments, 388 blanks, all 1958 lines
+
+Languages
++--------------+------------+------------+------------+------------+------------+
+| language     | files      | code       | comment    | blank      | total      |
++--------------+------------+------------+------------+------------+------------+
+| Python       |         18 |      1,027 |        -17 |        242 |      1,252 |
+| Markdown     |         13 |        392 |          0 |        143 |        535 |
+| JSON         |          3 |        154 |          0 |          2 |        156 |
+| YAML         |          1 |          9 |          0 |          1 |         10 |
+| Shell Script |          1 |          5 |          0 |          0 |          5 |
++--------------+------------+------------+------------+------------+------------+
+
+Directories
++----------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                                                   | files      | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                                      |         36 |      1,587 |        -17 |        388 |      1,958 |
+| . (Files)                                                                                                                              |          1 |          6 |          0 |          0 |          6 |
+| agent                                                                                                                                  |          3 |         75 |        -49 |         24 |         50 |
+| hermes_cli                                                                                                                             |          1 |          9 |          0 |          1 |         10 |
+| plugins                                                                                                                                |          2 |         24 |          8 |         13 |         45 |
+| plugins/team_policy                                                                                                                    |          2 |         24 |          8 |         13 |         45 |
+| scripts                                                                                                                                |          3 |         59 |          4 |         23 |         86 |
+| teamDoc                                                                                                                                |         16 |        546 |          0 |        145 |        691 |
+| teamDoc/GADoc                                                                                                                          |          8 |        388 |          0 |         88 |        476 |
+| teamDoc/GADoc (Files)                                                                                                                  |          5 |        234 |          0 |         86 |        320 |
+| teamDoc/GADoc/artifacts                                                                                                                |          3 |        154 |          0 |          2 |        156 |
+| teamDoc/GALog                                                                                                                          |          7 |        158 |          0 |         58 |        216 |
+| teamDoc/GAStep                                                                                                                         |          1 |          0 |          0 |         -1 |         -1 |
+| team_cloud                                                                                                                             |          4 |        492 |         20 |         80 |        592 |
+| team_cloud (Files)                                                                                                                     |          3 |        439 |         18 |         70 |        527 |
+| team_cloud/memory                                                                                                                      |          1 |         53 |          2 |         10 |         65 |
+| tests                                                                                                                                  |          6 |        376 |          0 |        102 |        478 |
+| tests/team_cloud                                                                                                                       |          6 |        376 |          0 |        102 |        478 |
++----------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++----------------------------------------------------------------------------------------------------------------------------------------+--------------+------------+------------+------------+------------+
+| filename                                                                                                                               | language     | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------------------------------------------------------------+--------------+------------+------------+------------+------------+
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/agent/agent_runtime_helpers.py                                | Python       |         10 |          0 |          0 |         10 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/agent/tool_dispatch_helpers.py                                | Python       |         52 |        -49 |         24 |         27 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/agent/tool_executor.py                                        | Python       |         13 |          0 |          0 |         13 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/hermes_cli/plugins.py                                         | Python       |          9 |          0 |          1 |         10 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/model_tools.py                                                | Python       |          6 |          0 |          0 |          6 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/plugins/team_policy/__init__.py                               | Python       |         15 |          8 |         12 |         35 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/plugins/team_policy/plugin.yaml                               | YAML         |          9 |          0 |          1 |         10 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/scripts/team-cloud-foundation-smoke.sh                        | Shell Script |          5 |          0 |          0 |          5 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/scripts/team-cloud-import-sessiondb.py                        | Python       |         37 |          2 |         12 |         51 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/scripts/team-cloud-memory-perf-baseline.py                    | Python       |         17 |          2 |         11 |         30 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GADoc/P2-21-memory-performance-baseline.md            | Markdown     |         31 |          0 |         12 |         43 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GADoc/P2-22-sessiondb-import.md                       | Markdown     |         33 |          0 |         12 |         45 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GADoc/P2-23-memory-runtime-docs.md                    | Markdown     |         87 |          0 |         32 |        119 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GADoc/P3-01-tool-risk-taxonomy.md                     | Markdown     |         38 |          0 |         14 |         52 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GADoc/P3-02-team-tool-policy-hook.md                  | Markdown     |         45 |          0 |         16 |         61 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GADoc/artifacts/memory-performance-baseline-v0.json   | JSON         |         54 |          0 |          1 |         55 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GADoc/artifacts/platform-foundation-smoke-v0.json     | JSON         |         20 |          0 |          0 |         20 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GADoc/artifacts/tool-risk-taxonomy-v0.json            | JSON         |         80 |          0 |          1 |         81 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GALog/2026-05-22-p2-20-isolation-test-suite.md        | Markdown     |          3 |          0 |          0 |          3 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GALog/2026-05-22-p2-21-memory-performance-baseline.md | Markdown     |         29 |          0 |         10 |         39 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GALog/2026-05-22-p2-22-sessiondb-import.md            | Markdown     |         28 |          0 |         10 |         38 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GALog/2026-05-22-p2-23-memory-runtime-docs.md         | Markdown     |         25 |          0 |         10 |         35 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GALog/2026-05-22-p2-estimate-reconciliation.md        | Markdown     |         14 |          0 |          8 |         22 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GALog/2026-05-22-p3-01-tool-risk-taxonomy.md          | Markdown     |         27 |          0 |         10 |         37 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GALog/2026-05-22-p3-02-team-tool-policy-hook.md       | Markdown     |         32 |          0 |         10 |         42 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/teamDoc/GAStep/01-work-package-register.md                    | Markdown     |          0 |          0 |         -1 |         -1 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/team_cloud/memory/performance.py                              | Python       |         53 |          2 |         10 |         65 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/team_cloud/sessiondb_import.py                                | Python       |        145 |         12 |         28 |        185 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/team_cloud/tool_policy.py                                     | Python       |        184 |          4 |         25 |        213 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/team_cloud/tool_risk.py                                       | Python       |        110 |          2 |         17 |        129 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/tests/team_cloud/test_memory_performance_baseline.py          | Python       |         32 |          0 |         14 |         46 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/tests/team_cloud/test_memory_runtime_docs.py                  | Python       |         36 |          0 |         13 |         49 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/tests/team_cloud/test_platform_foundation_suite.py            | Python       |          5 |          0 |          0 |          5 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/tests/team_cloud/test_sessiondb_import.py                     | Python       |        132 |          0 |         22 |        154 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/tests/team_cloud/test_team_tool_policy_hook.py                | Python       |        124 |          0 |         38 |        162 |
+| /Users/changzechuan/AIProjects/AgentProjects/HermesProjects/hermes-agent/tests/team_cloud/test_tool_risk_taxonomy.py                   | Python       |         47 |          0 |         15 |         62 |
+| Total                                                                                                                                  |              |      1,587 |        -17 |        388 |      1,958 |
++----------------------------------------------------------------------------------------------------------------------------------------+--------------+------------+------------+------------+------------+

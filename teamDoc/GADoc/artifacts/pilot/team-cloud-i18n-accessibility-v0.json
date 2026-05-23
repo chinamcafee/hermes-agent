@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "name": "team-cloud-i18n-accessibility-v0",
+  "supported_locales": [
+    "en",
+    "zh-CN"
+  ],
+  "critical_copy": [
+    {
+      "key": "skip_to_main",
+      "locales": {
+        "en": "Skip to main content",
+        "zh-CN": "\u8df3\u5230\u4e3b\u8981\u5185\u5bb9"
+      }
+    },
+    {
+      "key": "sign_in",
+      "locales": {
+        "en": "Sign in with Casdoor",
+        "zh-CN": "\u4f7f\u7528 Casdoor \u767b\u5f55"
+      }
+    },
+    {
+      "key": "team_console",
+      "locales": {
+        "en": "Team Console",
+        "zh-CN": "\u56e2\u961f\u63a7\u5236\u53f0"
+      }
+    },
+    {
+      "key": "permission_denied",
+      "locales": {
+        "en": "Access denied for the selected organization or resource.",
+        "zh-CN": "\u5f53\u524d\u7ec4\u7ec7\u6216\u8d44\u6e90\u65e0\u8bbf\u95ee\u6743\u9650\u3002"
+      }
+    },
+    {
+      "key": "empty_teams",
+      "locales": {
+        "en": "No teams available.",
+        "zh-CN": "\u6682\u65e0\u56e2\u961f\u3002"
+      }
+    },
+    {
+      "key": "refresh_organizations",
+      "locales": {
+        "en": "Refresh organizations",
+        "zh-CN": "\u5237\u65b0\u7ec4\u7ec7"
+      }
+    }
+  ],
+  "keyboard_paths": [
+    {
+      "id": "skip_to_main",
+      "target": "main-content",
+      "behavior": "First focusable control jumps directly to the app content."
+    },
+    {
+      "id": "language_toggle",
+      "target": "language-toggle",
+      "behavior": "English and zh-CN buttons expose pressed state."
+    },
+    {
+      "id": "admin_tab_roving_focus",
+      "target": "data-admin-tab",
+      "behavior": "Arrow keys, Home, and End move focus and selected tab."
+    },
+    {
+      "id": "bulk_confirm_escape",
+      "target": "members-bulk-confirm",
+      "behavior": "Escape closes the bulk disable confirmation dialog."
+    }
+  ],
+  "wcag_checks": [
+    "form_labels",
+    "aria_live_status",
+    "focus_visible",
+    "tab_roles",
+    "dialog_escape"
+  ],
+  "web_shell": "deploy/team-cloud/web-shell/index.html"
+}

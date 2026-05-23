@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "name": "team-cloud-chaos-drills-v0",
+  "drills": [
+    {
+      "id": "spicedb_outage",
+      "component": "spicedb",
+      "fault": "permission check unavailable",
+      "expected_behavior": "fail_closed",
+      "acceptance": [
+        "authorization_unavailable",
+        "no_resource_mutation",
+        "audit_event_recorded"
+      ],
+      "recovery_evidence": [
+        "authz_chaos_tests",
+        "security_test_suite"
+      ],
+      "rollback_command": "restore SpiceDB endpoint and replay relationship outbox"
+    },
+    {
+      "id": "minio_write_failure",
+      "component": "minio",
+      "fault": "backup object upload fails",
+      "expected_behavior": "retry_then_notify",
+      "acceptance": [
+        "backup_job_failed",
+        "notification_created",
+        "no_manifest_marked_active"
+      ],
+      "recovery_evidence": [
+        "backup_storage_tests",
+        "notification_tests"
+      ],
+      "rollback_command": "restore MinIO write path and retry failed backup job"
+    },
+    {
+      "id": "postgres_readonly",
+      "component": "postgresql",
+      "fault": "database accepts reads but rejects writes",
+      "expected_behavior": "writes_fail_closed_reads_continue",
+      "acceptance": [
+        "write_api_returns_error",
+        "read_api_still_available",
+        "backup_restore_drill"
+      ],
+      "recovery_evidence": [
+        "backup_restore_drill",
+        "upgrade_rollback_plan"
+      ],
+      "rollback_command": "promote writable PostgreSQL primary from PITR target"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+schemaFile: schema-v0.zed
+relationships: |
+  organization:org_local#owner@user:alice
+  organization:org_local#admin@user:admin
+  organization:org_local#security_admin@user:sec
+  organization:org_local#member@user:bob
+  organization:org_local#guest@user:guest
+
+  service_account:ci_bot#parent_org@organization:org_local
+  service_account:ci_bot#owner@user:alice
+
+  team:team_default#parent@organization:org_local
+  team:team_default#admin@user:team_admin
+  team:team_default#curator@user:curator
+  team:team_default#developer@user:dev
+  team:team_default#member@user:bob
+  team:team_default#guest@user:guest
+  team:team_default#service_account@service_account:ci_bot
+
+  project:project_default#parent@team:team_default
+  project:project_default#admin@user:project_admin
+  project:project_default#developer@user:dev
+  project:project_default#member@user:bob
+  project:project_default#guest@user:guest
+  project:project_default#service_account@service_account:ci_bot
+
+  session:session_bob#parent_project@project:project_default
+  session:session_bob#owner@user:bob
+  session:session_bob#participant@service_account:ci_bot
+
+  memory:memory_bob_personal#owner@user:bob
+  memory:memory_team_shared#parent_team@team:team_default
+  memory:memory_team_shared#curator@user:curator
+  memory:memory_break_glass#owner@user:bob
+  memory:memory_break_glass#approved_break_glass_reader@user:sec
+
+  document:doc_project#parent_project@project:project_default
+  document:doc_project#uploader@user:dev
+
+  tool:terminal#parent_org@organization:org_local
+  tool:terminal#terminal_executor@project:project_default#developer
+  tool:safe_tool#parent_org@organization:org_local
+  tool:safe_tool#safe_executor@team:team_default#member
+
+  backup:backup_bob#parent_org@organization:org_local
+  backup:backup_bob#owner@user:bob
+  backup:backup_bob#approved_break_glass_reader@user:sec
+assertions:
+  assertTrue:
+    - organization:org_local#manage@user:alice
+    - organization:org_local#read_audit@user:sec
+    - service_account:ci_bot#use@user:alice
+    - team:team_default#read@user:bob
+    - project:project_default#run_agent@user:bob
+    - session:session_bob#read@service_account:ci_bot
+    - memory:memory_bob_personal#read_personal@user:bob
+    - memory:memory_team_shared#review@user:curator
+    - memory:memory_break_glass#break_glass_read_personal@user:sec
+    - document:doc_project#read@user:guest
+    - tool:terminal#terminal_execute@user:dev
+    - tool:safe_tool#safe_execute@user:bob
+    - backup:backup_bob#read@user:bob
+    - backup:backup_bob#audit_read@user:sec
+  assertFalse:
+    - organization:org_local#delete@user:admin
+    - service_account:ci_bot#use@user:bob
+    - project:project_default#write@user:guest
+    - memory:memory_bob_personal#read_personal@user:curator
+    - memory:memory_team_shared#delete_team@user:bob
+    - tool:terminal#terminal_execute@user:guest
+    - backup:backup_bob#read@user:admin
+    - backup:backup_bob#restore@user:sec

@@ -1,0 +1,101 @@
+id,phase,work_package,owner,dependencies,target_week
+P1-01,P1,Team Cloud repo/package 骨架,Platform Backend,P0-12,W04
+P1-02,P1,配置和 secret 管理,Platform Backend + SRE,P1-01,W04
+P1-03,P1,本地 compose 栈,SRE,P0-04;P0-05;P1-02,W05
+P1-04,P1,PostgreSQL 基础迁移,Data Backend,P0-08;P1-01,W05
+P1-05,P1,Casdoor OIDC 接入,Auth Backend,P0-06;P1-01;P1-02,W05-W06
+P1-06,P1,JWT 中间件,Auth Backend,P1-05,W06
+P1-07,P1,Casdoor 同步 worker,Auth Backend,P1-04;P1-05,W06-W07
+P1-08,P1,PAT 和 service account,Auth Backend + Security,P1-06;P1-07,W07
+P1-09,P1,SpiceDB client,Platform Backend,P0-07;P1-01,W07
+P1-10,P1,SpiceDB schema CI,Platform Backend + QA,P0-07;P1-09,W07
+P1-11,P1,Relationship outbox,Platform Backend,P1-04;P1-09,W08
+P1-12,P1,AuthZ middleware,Platform Backend + Security,P1-09;P1-11,W08
+P1-13,P1,组织/团队/成员 API,Platform Backend,P1-04;P1-12,W08-W09
+P1-14,P1,Audit 基础能力,Platform Backend,P1-04;P1-13,W09
+P1-15,P1,MinIO client 和 manifest,Platform Backend + SRE,P0-09;P1-04,W09
+P1-16,P1,Web 登录壳,Frontend,P1-05;P1-06,W09
+P1-17,P1,Web 成员/团队/角色页,Frontend,P1-13;P1-16,W10
+P1-18,P1,权限解释最小页,Frontend + Security,P1-12;P1-17,W10
+P1-19,P1,平台基础测试,QA,P1-03;P1-13;P1-15,W10-W11
+P1-20,P1,平台安全负测,QA + Security,P1-06;P1-12;P1-19,W11
+P1-21,P1,观测基线,SRE,P1-14;P1-19,W11
+P1-22,P1,基础部署文档,Docs + SRE,P1-03;P1-19,W11
+P2-01,P2,记忆迁移表,Data Backend,P1-04,W12
+P2-02,P2,pgvector 查询层,Data Backend,P2-01,W12-W13
+P2-03,P2,Memory CRUD API,Data Backend,P2-01;P1-12,W13
+P2-04,P2,Prefetch pipeline,Runtime + Data Backend,P2-02;P2-03,W14
+P2-05,P2,Memory relationships,Platform Backend,P0-07;P2-03,W14
+P2-06,P2,Embedding worker,Data Backend,P2-01;P2-02,W14-W15
+P2-07,P2,Memory extraction worker,Runtime + Data Backend,P2-06,W15
+P2-08,P2,Review Queue API,Data Backend + Frontend,P2-03;P2-05,W15
+P2-09,P2,去重和冲突检测,Data Backend,P2-06;P2-08,W16
+P2-10,P2,PII/secret detector,Security + Data Backend,P2-07,W16
+P2-11,P2,TeamMemoryProvider 插件,Runtime,P2-04;P2-13,W16-W17
+P2-12,P2,Memory tools,Runtime,P2-11,W17
+P2-13,P2,sync_turn observation,Runtime,P2-07,W17
+P2-14,P2,AIAgent.team_context,Runtime,P0-02;P1-01,W18
+P2-15,P2,API Server identity headers,Runtime + Security,P2-14;P1-06,W18
+P2-16,P2,Gateway identity resolver,Runtime + Platform Backend,P2-15;P1-13,W18-W19
+P2-17,P2,Web Chat 入口,Frontend + Runtime,P2-14;P2-04,W19
+P2-18,P2,云会话历史,Runtime + Data Backend,P2-17;P1-14,W19
+P2-19,P2,Runtime event bridge,Runtime,P2-18,W20
+P2-20,P2,隔离测试套件,QA + Security,P2-04;P2-11;P2-16,W20-W21
+P2-21,P2,记忆性能基线,SRE + Data Backend,P2-02;P2-04,W21
+P2-22,P2,SessionDB 迁移工具,Runtime + Data Backend,P2-18,W21
+P2-23,P2,记忆和 runtime 文档,Docs + Runtime,P2-20;P2-21,W21
+P3-01,P3,工具风险 taxonomy,Security + Runtime,P2-12,W22
+P3-02,P3,TeamToolPolicyHook,Runtime + Security,P3-01;P1-12,W22-W23
+P3-03,P3,高危工具审批,Runtime + Security,P3-02,W23
+P3-04,P3,Tool audit,Runtime + Backend,P3-02;P1-14,W23
+P3-05,P3,Personal backup policy,Backend + SRE,P0-09;P1-15,W24
+P3-06,P3,加密 JSONL exporter,Backend + Security,P3-05,W24
+P3-07,P3,MinIO upload/lifecycle,SRE + Backend,P3-06;P1-15,W24-W25
+P3-08,P3,Restore preview,Backend + Frontend,P3-06;P3-07,W25
+P3-09,P3,Restore execute,Backend + SRE,P3-08,W25-W26
+P3-10,P3,组织导出,Backend + SRE,P0-09;P3-07,W26
+P3-11,P3,删除请求,Backend + Frontend,P3-10,W26
+P3-12,P3,Hard delete worker,Backend + SRE,P3-11,W27
+P3-13,P3,Retention policies,Backend + SRE,P3-07;P3-12,W27
+P3-14,P3,Break-glass,Security + Backend,P0-07;P3-04,W27-W28
+P3-15,P3,Permission Explorer GA,Frontend + Security,P1-18;P3-14,W28
+P3-16,P3,Audit 高级能力,Backend + Frontend,P1-14;P3-04,W28
+P3-17,P3,Usage/quotas,Backend + Product,P3-16,W29
+P3-18,P3,Backup/restore tests,QA + SRE,P3-09;P3-10,W29
+P3-19,P3,AuthZ chaos tests,QA + Security,P3-02;P3-14,W29
+P3-20,P3,数据治理文档,Docs + SRE,P3-18,W29
+P3-21,P3,通知系统,Backend + Frontend,P3-05;P3-14,W29
+P3-22,P3,Admin UX 收尾,Frontend + Product,P3-15;P3-16,W29
+P4-01,P4,Compose hardening,SRE,P1-03;P3-18,W30
+P4-02,P4,Helm chart,SRE,P4-01,W30-W31
+P4-03,P4,Offline bundle,SRE + Release,P4-02,W31
+P4-04,P4,Metrics dashboard,SRE,P1-21;P2-21,W31
+P4-05,P4,Logs/traces,SRE,P4-04,W31
+P4-06,P4,备份恢复演练,SRE,P3-18;P4-02,W32
+P4-07,P4,Load test scripts,QA + SRE,P2-21;P4-04,W32
+P4-08,P4,Security test suite,QA + Security,P2-20;P3-19,W32-W33
+P4-09,P4,Upgrade/rollback,SRE + Release,P4-02;P4-03,W33
+P4-10,P4,Pilot onboarding,Product + SRE,P4-01;P4-08,W33
+P4-11,P4,Bug triage process,Engineering + Product,P4-10,W33
+P4-12,P4,Cost/quotas tuning,Product + Backend,P3-17;P4-07,W34
+P4-13,P4,Chaos drills,SRE + Security,P4-06;P4-08,W34
+P4-14,P4,Beta 文档,Docs,P4-01;P4-10,W34
+P4-15,P4,i18n/accessibility pass,Frontend + QA,P3-22,W35
+P4-16,P4,性能调优,SRE + Backend,P4-07;P4-12,W35-W36
+P4-17,P4,Pilot telemetry review,Product + SRE,P4-10;P4-16,W36
+P4-18,P4,Beta exit report,Product + Release,P4-17;P4-08;P4-13,W37
+P5-01,P5,最终安全评审,Security,P4-18,W38
+P5-02,P5,SBOM 和许可证包,Security + Release,P0-04;P5-01,W38
+P5-03,P5,安装指南,Docs + SRE,P4-02;P4-03,W39
+P5-04,P5,管理员和用户手册,Docs + Product,P3-22;P4-14,W39
+P5-05,P5,API 文档,Docs + Backend,P2-23;P3-20,W39
+P5-06,P5,Runbook 汇总,Docs + SRE,P4-06;P4-13,W40
+P5-07,P5,Release notes,Release + Product,P5-01;P5-02,W40
+P5-08,P5,GA sign-off,Release,P5-01;P5-02;P5-06;P5-12,W42
+P5-09,P5,Support playbook,Support + Docs,P5-06,W40
+P5-10,P5,Migration guide,Docs + Backend,P4-09,W40
+P5-11,P5,Training material,Product + Docs,P5-04;P5-09,W41
+P5-12,P5,Final regression,QA,P5-01;P5-03;P5-05,W41
+P5-13,P5,Deployment smoke,SRE + QA,P5-03;P5-12,W42
+P5-14,P5,Legal/compliance package,Legal + Security,P5-02,W42
+P5-15,P5,Post-GA backlog,Product + Engineering,P4-18;P5-08,W43

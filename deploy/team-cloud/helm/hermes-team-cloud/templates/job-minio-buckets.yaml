@@ -1,0 +1,33 @@
+{{- if .Values.jobs.minioBuckets.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "hermes-team-cloud.fullname" . }}-minio-buckets
+  labels:
+    {{- include "hermes-team-cloud.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: {{ .Values.jobs.minioBuckets.ttlSecondsAfterFinished }}
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: minio-buckets
+          image: "{{ .Values.images.minio.repository }}:{{ .Values.images.minio.tag }}"
+          imagePullPolicy: {{ .Values.images.minio.pullPolicy }}
+          command: ["sh", "-c"]
+          args:
+            - |
+              for bucket in {{ join " " .Values.jobs.minioBuckets.buckets }}; do
+                echo "Ensure bucket ${bucket}"
+              done
+          env:
+            - name: TEAM_CLOUD_MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hermes-team-cloud.secretName" . }}
+                  key: TEAM_CLOUD_MINIO_SECRET_KEY
+{{- end }}
+

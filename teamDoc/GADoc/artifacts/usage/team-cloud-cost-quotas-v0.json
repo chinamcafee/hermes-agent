@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "name": "team-cloud-cost-quotas-v0",
+  "default_quotas": {
+    "run_count": 2000,
+    "token_count": 2000000,
+    "tool_call_count": 10000,
+    "backup_size_bytes": 10737418240
+  },
+  "alert_thresholds": {
+    "warning_ratio": 0.8,
+    "critical_ratio": 0.95
+  },
+  "dashboard_signals": [
+    "run_count",
+    "token_count",
+    "tool_call_count",
+    "backup_size_bytes",
+    "quota_status"
+  ],
+  "limit_alerts": {
+    "quota_exceeded": [
+      "email",
+      "in_app"
+    ],
+    "warning_threshold_crossed": [
+      "in_app"
+    ],
+    "critical_threshold_crossed": [
+      "email",
+      "in_app"
+    ]
+  }
+}

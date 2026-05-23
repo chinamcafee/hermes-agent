@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "name": "team-cloud-ga-release-notes-v0",
+  "release_channel": "GA",
+  "release_status": "ga_ready",
+  "release_date": "2026-05-23",
+  "highlights": [
+    "enterprise_team_cloud",
+    "two_tier_memory",
+    "local_memory_backup",
+    "casdoor_spicedb_postgres_minio_stack",
+    "tool_policy_and_audit"
+  ],
+  "breaking_changes": [
+    {
+      "id": "casdoor_identity_required",
+      "summary": "Team Cloud requires Casdoor-backed identity for web and API access."
+    },
+    {
+      "id": "team_scoped_memory",
+      "summary": "Memory is separated into personal and team_shared scopes with org/team context."
+    },
+    {
+      "id": "tool_policy_enforced",
+      "summary": "High-risk tools are gated by TeamToolPolicyHook and audit requirements."
+    }
+  ],
+  "upgrade_notes": [
+    {
+      "id": "compose",
+      "summary": "Use deploy/team-cloud/compose.yaml for local GA install."
+    },
+    {
+      "id": "helm",
+      "summary": "Use deploy/team-cloud/helm/hermes-team-cloud/Chart.yaml for Kubernetes."
+    },
+    {
+      "id": "offline_bundle",
+      "summary": "Ship offline manifest, images, and checksums for restricted-network installs."
+    },
+    {
+      "id": "migration_checksums",
+      "summary": "Verify SQL migration checksums before and after upgrade/rollback."
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "helm_lint_not_run_locally",
+      "severity": "P3",
+      "ga_blocking": false,
+      "summary": "Local environment may not include helm; chart contract is covered by static tests."
+    },
+    {
+      "id": "external_sso_variants_post_ga",
+      "severity": "P3",
+      "ga_blocking": false,
+      "summary": "Only Casdoor-backed default SSO path is GA; additional IdP variants remain Post-GA."
+    }
+  ],
+  "evidence_links": [
+    {
+      "id": "final_security_review",
+      "path": "teamDoc/GADoc/artifacts/security/team-cloud-final-security-review-v0.json"
+    },
+    {
+      "id": "sbom_license",
+      "path": "teamDoc/GADoc/artifacts/release/team-cloud-sbom-license-v0.json"
+    },
+    {
+      "id": "install_guide",
+      "path": "teamDoc/GADoc/artifacts/release/team-cloud-install-guide-v0.json"
+    },
+    {
+      "id": "runbook_summary",
+      "path": "teamDoc/GADoc/artifacts/release/team-cloud-runbook-summary-v0.json"
+    }
+  ],
+  "verification": [
+    "scripts/run_tests.sh tests/team_cloud/test_release_notes.py",
+    "scripts/team-cloud-foundation-smoke.sh"
+  ]
+}

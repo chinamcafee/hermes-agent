@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hermes-team-cloud.fullname" . }}-web
+  labels:
+    {{- include "hermes-team-cloud.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.service.web.port }}
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: {{ include "hermes-team-cloud.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: web
+

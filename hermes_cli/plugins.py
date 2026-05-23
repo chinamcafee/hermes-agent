@@ -1431,6 +1431,9 @@ def get_pre_tool_call_block_message(
     task_id: str = "",
     session_id: str = "",
     tool_call_id: str = "",
+    team_context: Optional[Any] = None,
+    platform: str = "",
+    user_id: str = "",
 ) -> Optional[str]:
     """Check ``pre_tool_call`` hooks for a blocking directive.
 
@@ -1448,14 +1451,21 @@ def get_pre_tool_call_block_message(
         fmt = getattr(_thread_tool_whitelist, "fmt", "Tool '{tool_name}' denied")
         return fmt.format(tool_name=tool_name)
 
-    hook_results = invoke_hook(
-        "pre_tool_call",
-        tool_name=tool_name,
-        args=args if isinstance(args, dict) else {},
-        task_id=task_id,
-        session_id=session_id,
-        tool_call_id=tool_call_id,
-    )
+    hook_kwargs: Dict[str, Any] = {
+        "tool_name": tool_name,
+        "args": args if isinstance(args, dict) else {},
+        "task_id": task_id,
+        "session_id": session_id,
+        "tool_call_id": tool_call_id,
+    }
+    if team_context is not None:
+        hook_kwargs["team_context"] = team_context
+    if platform:
+        hook_kwargs["platform"] = platform
+    if user_id:
+        hook_kwargs["user_id"] = user_id
+
+    hook_results = invoke_hook("pre_tool_call", **hook_kwargs)
 
     for result in hook_results:
         if not isinstance(result, dict):

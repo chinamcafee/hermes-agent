@@ -1,0 +1,28 @@
+{{- if .Values.jobs.migrations.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "hermes-team-cloud.fullname" . }}-migrate
+  labels:
+    {{- include "hermes-team-cloud.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: {{ .Values.jobs.migrations.ttlSecondsAfterFinished }}
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: "{{ .Values.images.api.repository }}:{{ .Values.images.api.tag }}"
+          imagePullPolicy: {{ .Values.images.api.pullPolicy }}
+          command: ["python", "-m", "team_cloud.migrations"]
+          env:
+            - name: TEAM_CLOUD_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hermes-team-cloud.secretName" . }}
+                  key: TEAM_CLOUD_DATABASE_URL
+{{- end }}
+

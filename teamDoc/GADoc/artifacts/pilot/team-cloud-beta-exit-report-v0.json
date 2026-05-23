@@ -1,0 +1,303 @@
+{
+  "schema_version": 1,
+  "name": "team-cloud-beta-exit-report-v0",
+  "exit_recommendation": "proceed_to_p5",
+  "blockers": {
+    "open_p0_p1": 0,
+    "security_data_leak": 0,
+    "cross_org_access": 0,
+    "backup_restore_failure": 0,
+    "authz_fail_open": 0,
+    "pilot_team_blocked": 0
+  },
+  "ga_readiness": [
+    {
+      "domain": "deployment",
+      "evidence": "P4-01/P4-02/P4-03/P4-09"
+    },
+    {
+      "domain": "observability",
+      "evidence": "P4-04/P4-05"
+    },
+    {
+      "domain": "load",
+      "evidence": "P4-07/P4-16"
+    },
+    {
+      "domain": "security",
+      "evidence": "P4-08/P4-13"
+    },
+    {
+      "domain": "backup_restore",
+      "evidence": "P4-06"
+    },
+    {
+      "domain": "pilot",
+      "evidence": "P4-10/P4-11/P4-17"
+    },
+    {
+      "domain": "docs",
+      "evidence": "P4-14"
+    },
+    {
+      "domain": "accessibility",
+      "evidence": "P4-15"
+    },
+    {
+      "domain": "performance",
+      "evidence": "P4-16"
+    }
+  ],
+  "ga_matrix_coverage": [
+    {
+      "id": "GA-SEC-001",
+      "domain": "Security",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P1-05/P1-06"
+    },
+    {
+      "id": "GA-SEC-002",
+      "domain": "Security",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P1-07/P1-13"
+    },
+    {
+      "id": "GA-SEC-003",
+      "domain": "Security",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P1-09/P1-10/P1-12"
+    },
+    {
+      "id": "GA-SEC-004",
+      "domain": "Security",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P2-20"
+    },
+    {
+      "id": "GA-SEC-005",
+      "domain": "Security",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P2-20"
+    },
+    {
+      "id": "GA-SEC-006",
+      "domain": "Security",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P3-05/P3-07"
+    },
+    {
+      "id": "GA-SEC-007",
+      "domain": "Security",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P3-02/P3-03"
+    },
+    {
+      "id": "GA-SEC-008",
+      "domain": "Security",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P3-14/P3-21"
+    },
+    {
+      "id": "GA-PERF-001",
+      "domain": "Performance",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P4-07/P4-16"
+    },
+    {
+      "id": "GA-PERF-002",
+      "domain": "Performance",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P2-21/P4-16"
+    },
+    {
+      "id": "GA-PERF-003",
+      "domain": "Performance",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P4-04/P4-07"
+    },
+    {
+      "id": "GA-PERF-004",
+      "domain": "Performance",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P2-21/P4-16"
+    },
+    {
+      "id": "GA-PERF-005",
+      "domain": "Performance",
+      "status": "p5_followup",
+      "ga_blocking": false,
+      "evidence": "P4-12/P5-15"
+    },
+    {
+      "id": "GA-PERF-006",
+      "domain": "Performance",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P1-21/P4-04"
+    },
+    {
+      "id": "GA-BR-001",
+      "domain": "BackupRestore",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P4-06"
+    },
+    {
+      "id": "GA-BR-002",
+      "domain": "BackupRestore",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P4-06/P1-11"
+    },
+    {
+      "id": "GA-BR-003",
+      "domain": "BackupRestore",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P3-07/P4-06"
+    },
+    {
+      "id": "GA-BR-004",
+      "domain": "BackupRestore",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P4-06"
+    },
+    {
+      "id": "GA-BR-005",
+      "domain": "BackupRestore",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P3-08/P3-09/P3-18"
+    },
+    {
+      "id": "GA-BR-006",
+      "domain": "BackupRestore",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P3-10"
+    },
+    {
+      "id": "GA-REL-001",
+      "domain": "Release",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P4-01/P5-13"
+    },
+    {
+      "id": "GA-REL-002",
+      "domain": "Release",
+      "status": "p5_followup",
+      "ga_blocking": true,
+      "evidence": "P4-02/P5-13"
+    },
+    {
+      "id": "GA-REL-003",
+      "domain": "Release",
+      "status": "p5_followup",
+      "ga_blocking": false,
+      "evidence": "P4-03/P5-13/P5-15"
+    },
+    {
+      "id": "GA-REL-004",
+      "domain": "Release",
+      "status": "p5_followup",
+      "ga_blocking": true,
+      "evidence": "P5-02/P5-14"
+    },
+    {
+      "id": "GA-REL-005",
+      "domain": "Release",
+      "status": "p5_followup",
+      "ga_blocking": true,
+      "evidence": "P4-09/P5-12"
+    },
+    {
+      "id": "GA-DOC-001",
+      "domain": "Documentation",
+      "status": "p5_followup",
+      "ga_blocking": true,
+      "evidence": "P5-03"
+    },
+    {
+      "id": "GA-DOC-002",
+      "domain": "Documentation",
+      "status": "p5_followup",
+      "ga_blocking": true,
+      "evidence": "P5-04/releaseManual"
+    },
+    {
+      "id": "GA-DOC-003",
+      "domain": "Documentation",
+      "status": "p5_followup",
+      "ga_blocking": true,
+      "evidence": "P5-05"
+    },
+    {
+      "id": "GA-DOC-004",
+      "domain": "Documentation",
+      "status": "p5_followup",
+      "ga_blocking": true,
+      "evidence": "P5-06"
+    },
+    {
+      "id": "GA-PILOT-001",
+      "domain": "Pilot",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P4-10/P4-17"
+    },
+    {
+      "id": "GA-PILOT-002",
+      "domain": "Pilot",
+      "status": "passed",
+      "ga_blocking": true,
+      "evidence": "P4-11/P4-18"
+    },
+    {
+      "id": "GA-SIGN-001",
+      "domain": "Signoff",
+      "status": "p5_followup",
+      "ga_blocking": true,
+      "evidence": "P5-08/P5-15"
+    }
+  ],
+  "residual_risks": [
+    {
+      "id": "risk-register-critical-high-review",
+      "owner": "security-review",
+      "p5_disposition": "P5-01 final security review"
+    },
+    {
+      "id": "license-and-sbom-finalization",
+      "owner": "release-manager",
+      "p5_disposition": "P5-02 SBOM and license package"
+    }
+  ],
+  "p5_followups": [
+    "final_security_review",
+    "sbom_license_package",
+    "deployment_smoke_helm_runtime_validation",
+    "install_guide",
+    "admin_user_manuals",
+    "api_docs",
+    "runbook_summary",
+    "release_manual",
+    "ga_sign_off",
+    "deployment_smoke",
+    "final_regression",
+    "legal_compliance_package"
+  ]
+}

@@ -1,0 +1,20 @@
+environment: local
+bind_host: 0.0.0.0
+api_port: 8780
+log_level: INFO
+
+jwt_issuer: http://casdoor:8000
+casdoor_base_url: http://casdoor:8000
+casdoor_client_id: hermes-team-api
+casdoor_client_secret_file: ./secrets/team_cloud_casdoor_client_secret.txt
+
+database_url_file: ./secrets/team_cloud_database_url.txt
+
+spicedb_endpoint: spicedb:50051
+spicedb_preshared_key_file: ./secrets/team_cloud_spicedb_preshared_key.txt
+
+minio_endpoint: http://minio:9000
+minio_access_key: hermes_team
+minio_secret_key_file: ./secrets/team_cloud_minio_secret_key.txt
+
+encryption_key_file: ./secrets/team_cloud_encryption_key.txt

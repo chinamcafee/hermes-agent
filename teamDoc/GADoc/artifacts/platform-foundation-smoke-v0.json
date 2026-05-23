@@ -1,0 +1,363 @@
+{
+  "schema_version": 1,
+  "name": "team-cloud-platform-foundation-smoke",
+  "description": "P1/P2 foundation smoke suite covering API, auth, authz, memory runtime, outbox, MinIO manifest, and web shell.",
+  "checks": [
+    {
+      "domain": "api",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_admin_org_api.py tests/team_cloud/test_permission_explorer_minimal.py"
+    },
+    {
+      "domain": "runtime_memory_init",
+      "command": "scripts/run_tests.sh tests/run_agent/test_memory_provider_init.py"
+    },
+    {
+      "domain": "api_server_team_headers",
+      "command": "scripts/run_tests.sh tests/gateway/test_api_server_team_headers.py"
+    },
+    {
+      "domain": "gateway_team_identity_resolver",
+      "command": "scripts/run_tests.sh tests/gateway/test_gateway_team_identity_resolver.py"
+    },
+    {
+      "domain": "external_identity_resolver",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_external_identity_resolver.py"
+    },
+    {
+      "domain": "memory_schema",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_migrations.py tests/team_cloud/test_postgres_migrations.py"
+    },
+    {
+      "domain": "memory_query",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_query_layer.py"
+    },
+    {
+      "domain": "memory_api",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_crud_api.py"
+    },
+    {
+      "domain": "memory_relationships",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_relationships.py"
+    },
+    {
+      "domain": "memory_embedding_worker",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_embedding_worker.py"
+    },
+    {
+      "domain": "memory_extraction_worker",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_extraction_worker.py"
+    },
+    {
+      "domain": "memory_review_api",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_review_api.py"
+    },
+    {
+      "domain": "memory_observations_api",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_observations_api.py"
+    },
+    {
+      "domain": "memory_duplicate_conflict_detector",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_duplicate_conflict_detector.py"
+    },
+    {
+      "domain": "memory_pii_secret_detector",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_pii_secret_detector.py"
+    },
+    {
+      "domain": "team_memory_provider",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_team_memory_provider.py"
+    },
+    {
+      "domain": "team_memory_tools",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_team_memory_provider_tools.py"
+    },
+    {
+      "domain": "memory_prefetch",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_prefetch_pipeline.py"
+    },
+    {
+      "domain": "memory_performance_baseline",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_performance_baseline.py"
+    },
+    {
+      "domain": "auth",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_casdoor_oidc.py tests/team_cloud/test_jwt_middleware.py tests/team_cloud/test_casdoor_sync_worker.py tests/team_cloud/test_pat_service_accounts.py"
+    },
+    {
+      "domain": "authz",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_spicedb_client.py tests/team_cloud/test_authz_middleware.py tests/team_cloud/test_spicedb_schema_ci.py"
+    },
+    {
+      "domain": "authz_chaos",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_authz_chaos.py"
+    },
+    {
+      "domain": "outbox",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_relationship_outbox.py tests/team_cloud/test_platform_foundation_suite.py"
+    },
+    {
+      "domain": "minio",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_minio_manifest.py"
+    },
+    {
+      "domain": "web",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_web_login_shell.py tests/team_cloud/test_web_admin_pages.py tests/team_cloud/test_permission_explorer_minimal.py tests/team_cloud/test_permission_explorer_ga.py"
+    },
+    {
+      "domain": "web_chat_entry",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_web_chat_entry.py"
+    },
+    {
+      "domain": "cloud_session_history",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_cloud_session_history.py"
+    },
+    {
+      "domain": "sessiondb_import",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_sessiondb_import.py"
+    },
+    {
+      "domain": "runtime_event_bridge",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_runtime_event_bridge.py"
+    },
+    {
+      "domain": "p2_isolation_suite",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_isolation_suite.py"
+    },
+    {
+      "domain": "security",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_platform_security_negative.py"
+    },
+    {
+      "domain": "observability",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_observability_baseline.py"
+    },
+    {
+      "domain": "metrics_dashboard",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_metrics_dashboard.py"
+    },
+    {
+      "domain": "logs_traces",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_logs_traces.py"
+    },
+    {
+      "domain": "load_test_scripts",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_load_test_scripts.py"
+    },
+    {
+      "domain": "security_test_suite",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_security_test_suite.py"
+    },
+    {
+      "domain": "final_security_review",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_final_security_review.py"
+    },
+    {
+      "domain": "sbom_license_package",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_sbom_license_package.py"
+    },
+    {
+      "domain": "install_guide",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_install_guide.py"
+    },
+    {
+      "domain": "admin_user_manuals",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_admin_user_manuals.py"
+    },
+    {
+      "domain": "api_docs",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_api_docs_package.py"
+    },
+    {
+      "domain": "runbook_summary",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_runbook_summary.py"
+    },
+    {
+      "domain": "release_notes",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_release_notes.py"
+    },
+    {
+      "domain": "ga_signoff",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_ga_signoff.py"
+    },
+    {
+      "domain": "support_playbook",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_support_playbook.py"
+    },
+    {
+      "domain": "migration_guide",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_migration_guide.py"
+    },
+    {
+      "domain": "training_material",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_training_material.py"
+    },
+    {
+      "domain": "final_regression",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_final_regression.py"
+    },
+    {
+      "domain": "deployment_smoke",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_deployment_smoke.py"
+    },
+    {
+      "domain": "legal_compliance_package",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_legal_compliance_package.py"
+    },
+    {
+      "domain": "post_ga_backlog",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_post_ga_backlog.py"
+    },
+    {
+      "domain": "release_manual",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_release_manual.py"
+    },
+    {
+      "domain": "ga_release_checklist",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_ga_release_checklist.py"
+    },
+    {
+      "domain": "upgrade_rollback",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_upgrade_rollback.py"
+    },
+    {
+      "domain": "performance_tuning",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_performance_tuning.py"
+    },
+    {
+      "domain": "pilot_onboarding",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_pilot_onboarding.py"
+    },
+    {
+      "domain": "pilot_telemetry_review",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_pilot_telemetry_review.py"
+    },
+    {
+      "domain": "bug_triage_process",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_bug_triage_process.py"
+    },
+    {
+      "domain": "cost_quota_tuning",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_cost_quota_tuning.py"
+    },
+    {
+      "domain": "chaos_drills",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_chaos_drills.py"
+    },
+    {
+      "domain": "beta_docs",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_beta_docs.py"
+    },
+    {
+      "domain": "beta_exit_report",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_beta_exit_report.py"
+    },
+    {
+      "domain": "i18n_accessibility",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_i18n_accessibility.py"
+    },
+    {
+      "domain": "memory_runtime_docs",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_runtime_docs.py"
+    },
+    {
+      "domain": "tool_risk_taxonomy",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_tool_risk_taxonomy.py"
+    },
+    {
+      "domain": "team_tool_policy_hook",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_team_tool_policy_hook.py"
+    },
+    {
+      "domain": "tool_audit",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_tool_audit.py"
+    },
+    {
+      "domain": "backup_policy",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_backup_policy.py"
+    },
+    {
+      "domain": "backup_exporter",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_backup_exporter.py"
+    },
+    {
+      "domain": "backup_storage",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_backup_storage.py"
+    },
+    {
+      "domain": "backup_restore_drill",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_backup_restore_drill.py"
+    },
+    {
+      "domain": "platform_backup_restore_drill",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_platform_backup_restore_drill.py"
+    },
+    {
+      "domain": "restore_preview",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_restore_preview.py"
+    },
+    {
+      "domain": "restore_execute",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_restore_execute.py"
+    },
+    {
+      "domain": "org_export",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_org_export.py"
+    },
+    {
+      "domain": "deletion_request",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_deletion_request.py"
+    },
+    {
+      "domain": "hard_delete_worker",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_hard_delete_worker.py"
+    },
+    {
+      "domain": "retention_policies",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_retention_policies.py"
+    },
+    {
+      "domain": "break_glass",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_break_glass.py"
+    },
+    {
+      "domain": "permission_explorer_ga",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_permission_explorer_ga.py"
+    },
+    {
+      "domain": "audit_advanced",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_audit_advanced.py"
+    },
+    {
+      "domain": "usage_quotas",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_usage_quotas.py"
+    },
+    {
+      "domain": "data_governance_docs",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_data_governance_docs.py"
+    },
+    {
+      "domain": "notifications",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_notifications.py"
+    },
+    {
+      "domain": "admin_ux_final",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_admin_ux_final.py"
+    },
+    {
+      "domain": "compose_hardening",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_compose_hardening.py"
+    },
+    {
+      "domain": "helm_chart",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_helm_chart.py"
+    },
+    {
+      "domain": "offline_bundle",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_offline_bundle.py"
+    },
+    {
+      "domain": "docs",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_deployment_docs.py"
+    }
+  ]
+}

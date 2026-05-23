@@ -1,0 +1,47 @@
+schema_version: 1
+bundle_name: hermes-team-cloud-offline
+bundle_version: 0.1.0
+chart:
+  path: deploy/team-cloud/helm/hermes-team-cloud
+  archive: charts/hermes-team-cloud-0.1.0.tgz
+checksums:
+  algorithm: sha256
+  file: SHA256SUMS
+install_script: install.sh
+images:
+  - name: team-api
+    ref: hermes-team-api:dev
+    archive: images/hermes-team-api-dev.tar
+  - name: team-worker
+    ref: hermes-team-worker:dev
+    archive: images/hermes-team-worker-dev.tar
+  - name: hermes-runtime
+    ref: hermes-team-runtime:dev
+    archive: images/hermes-team-runtime-dev.tar
+  - name: team-web
+    ref: nginx:1.29.3-alpine
+    archive: images/nginx-1.29.3-alpine.tar
+  - name: alpine
+    ref: alpine:3.22.2
+    archive: images/alpine-3.22.2.tar
+  - name: postgres
+    ref: pgvector/pgvector:0.8.2-pg18-trixie
+    archive: images/pgvector-0.8.2-pg18-trixie.tar
+  - name: spicedb
+    ref: ghcr.io/authzed/spicedb:v1.53.0-debug
+    archive: images/spicedb-v1.53.0-debug.tar
+  - name: zed
+    ref: ghcr.io/authzed/zed:v1.1.1-debug
+    archive: images/zed-v1.1.1-debug.tar
+  - name: minio
+    ref: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    archive: images/minio-RELEASE.2025-09-07T16-13-09Z.tar
+  - name: minio-mc
+    ref: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    archive: images/minio-mc-RELEASE.2025-08-13T08-35-41Z.tar
+  - name: casdoor
+    ref: casbin/casdoor:3.60.1
+    archive: images/casdoor-3.60.1.tar
+  - name: mailpit
+    ref: axllent/mailpit:v1.29.5
+    archive: images/mailpit-v1.29.5.tar

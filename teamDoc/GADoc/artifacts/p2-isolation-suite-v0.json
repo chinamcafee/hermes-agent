@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "name": "p2-memory-runtime-isolation-suite",
+  "description": "P2 isolation smoke suite covering personal memory, team memory, trusted identity, Gateway session prefixes, cloud history, and runtime event binding.",
+  "checks": [
+    {
+      "domain": "personal_memory_isolation",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_memory_query_layer.py tests/team_cloud/test_memory_prefetch_pipeline.py"
+    },
+    {
+      "domain": "team_memory_authz_isolation",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_team_memory_provider.py tests/team_cloud/test_platform_security_negative.py"
+    },
+    {
+      "domain": "gateway_team_identity_session_prefix",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_external_identity_resolver.py tests/gateway/test_gateway_team_identity_resolver.py"
+    },
+    {
+      "domain": "api_server_trusted_identity_headers",
+      "command": "scripts/run_tests.sh tests/gateway/test_api_server_team_headers.py tests/run_agent/test_memory_provider_init.py"
+    },
+    {
+      "domain": "cloud_history_org_project_member_filter",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_web_chat_entry.py tests/team_cloud/test_cloud_session_history.py"
+    },
+    {
+      "domain": "runtime_event_bridge_session_binding",
+      "command": "scripts/run_tests.sh tests/team_cloud/test_runtime_event_bridge.py"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "name": "team-cloud-pilot-onboarding-v0",
+  "pilot_teams": [
+    {
+      "team_id": "pilot-support",
+      "display_name": "Support Pilot",
+      "gateway_platform": "slack",
+      "member_import": {
+        "source": "casdoor_group",
+        "group": "pilot-support"
+      },
+      "initial_projects": [
+        "support-triage",
+        "knowledge-base"
+      ],
+      "training_modules": [
+        "admin-basics",
+        "team-memory",
+        "tool-policy"
+      ]
+    },
+    {
+      "team_id": "pilot-research",
+      "display_name": "Research Pilot",
+      "gateway_platform": "telegram",
+      "member_import": {
+        "source": "casdoor_group",
+        "group": "pilot-research"
+      },
+      "initial_projects": [
+        "paper-review",
+        "experiment-log"
+      ],
+      "training_modules": [
+        "member-basics",
+        "memory-review",
+        "backup-restore"
+      ]
+    },
+    {
+      "team_id": "pilot-ops",
+      "display_name": "Operations Pilot",
+      "gateway_platform": "api_server",
+      "member_import": {
+        "source": "casdoor_group",
+        "group": "pilot-ops"
+      },
+      "initial_projects": [
+        "incident-drill",
+        "release-readiness"
+      ],
+      "training_modules": [
+        "admin-basics",
+        "break-glass",
+        "audit-export"
+      ]
+    }
+  ],
+  "schedule": {
+    "duration_days": 14,
+    "start_gate": "P4-09 upgrade_rollback succeeded",
+    "weekly_reviews": [
+      "day-7",
+      "day-14"
+    ]
+  },
+  "feedback": {
+    "cadence": "weekly",
+    "channels": [
+      "pilot_feedback_form",
+      "admin_office_hours"
+    ],
+    "required_fields": [
+      "severity",
+      "workflow",
+      "impact",
+      "repro_steps"
+    ]
+  },
+  "weekly_review": {
+    "signals": [
+      "usage",
+      "latency",
+      "errors",
+      "security_events",
+      "backup_jobs"
+    ],
+    "owner": "team-cloud-beta-coordinator"
+  }
+}

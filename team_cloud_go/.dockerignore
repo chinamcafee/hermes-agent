@@ -1,0 +1,7 @@
+.git/
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/
+**/*.test.ts
+**/*.test.tsx
+**/*.test.go

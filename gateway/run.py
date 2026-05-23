@@ -1253,6 +1253,8 @@ def _parse_session_key(session_key: str) -> "dict | None":
     thread_id, so we leave ``thread_id`` out to avoid mis-routing.
     """
     parts = session_key.split(":")
+    if len(parts) >= 8 and parts[0] == "team":
+        parts = parts[3:]
     if len(parts) >= 5 and parts[0] == "agent" and parts[1] == "main":
         result = {
             "platform": parts[2],
@@ -1438,6 +1440,7 @@ class GatewayRunner:
         self._restart_drain_timeout = self._load_restart_drain_timeout()
         self._provider_routing = self._load_provider_routing()
         self._fallback_model = self._load_fallback_model()
+        self._team_identity_resolver = self._build_team_identity_resolver()
 
         # Wire process registry into session store for reset protection
         from tools.process_registry import process_registry
@@ -1925,6 +1928,60 @@ class GatewayRunner:
             group_sessions_per_user=getattr(config, "group_sessions_per_user", True),
             thread_sessions_per_user=getattr(config, "thread_sessions_per_user", False),
         )
+
+    def _build_team_identity_resolver(self):
+        try:
+            from gateway.team_identity import (
+                build_gateway_team_identity_resolver_from_config,
+            )
+
+            return build_gateway_team_identity_resolver_from_config(
+                _load_gateway_config()
+            )
+        except Exception as exc:
+            logger.warning("Gateway team identity resolver init failed: %s", exc)
+            return None
+
+    async def _resolve_team_identity_for_event(
+        self,
+        event: MessageEvent,
+        source: SessionSource,
+    ) -> tuple[MessageEvent, SessionSource, Optional[str]]:
+        resolver = getattr(self, "_team_identity_resolver", None)
+        if resolver is None:
+            return event, source, None
+        shared_session = is_shared_multi_user_session(
+            source,
+            group_sessions_per_user=getattr(self.config, "group_sessions_per_user", True),
+            thread_sessions_per_user=getattr(self.config, "thread_sessions_per_user", False),
+        )
+        try:
+            result = await resolver.resolve(source, shared_session=shared_session)
+        except Exception as exc:
+            logger.warning("Gateway team identity resolver failed: %s", exc)
+            return event, source, "Team identity resolution failed. Please try again later."
+
+        status = getattr(result, "status", "")
+        if status == "disabled":
+            return event, source, None
+        if status == "unbound":
+            return event, source, getattr(result, "binding_message", None) or (
+                "This platform account is not bound to Hermes Team Cloud yet."
+            )
+        if status == "error":
+            logger.warning(
+                "Gateway team identity resolver denied message: %s",
+                getattr(result, "error", "") or "unknown error",
+            )
+            return event, source, "Team identity resolution failed. Please try again later."
+        if status != "resolved" or not getattr(result, "team_context", None):
+            return event, source, "Team identity resolution failed. Please try again later."
+
+        team_context = dict(result.team_context)
+        source = dataclasses.replace(source, team_context=team_context)
+        event = dataclasses.replace(event, source=source)
+        setattr(event, "team_context", team_context)
+        return event, source, None
 
     def _telegram_topic_mode_enabled(self, source: SessionSource) -> bool:
         """Return whether Telegram DM topic mode is active for this chat."""
@@ -6523,6 +6580,14 @@ class GatewayRunner:
                     # Record rate limit so subsequent messages are silently ignored
                     self.pairing_store._record_rate_limit(platform_name, source.user_id)
             return None
+
+        if not is_internal:
+            event, source, team_identity_notice = await self._resolve_team_identity_for_event(
+                event,
+                source,
+            )
+            if team_identity_notice:
+                return team_identity_notice
         
         # Intercept messages that are responses to a pending /update prompt.
         # The update process (detached) wrote .update_prompt.json; the watcher
@@ -8433,6 +8498,8 @@ class GatewayRunner:
                 run_generation=run_generation,
                 event_message_id=self._reply_anchor_for_event(event),
                 channel_prompt=event.channel_prompt,
+                team_context=getattr(event, "team_context", None)
+                or getattr(source, "team_context", None),
             )
 
             # Stop persistent typing indicator now that the agent is done
@@ -11340,6 +11407,8 @@ class GatewayRunner:
                 event_message_id=event_message_id,
                 media_urls=media_urls,
                 media_types=media_types,
+                team_context=getattr(event, "team_context", None)
+                or getattr(source, "team_context", None),
             )
         )
         self._background_tasks.add(_task)
@@ -11356,6 +11425,7 @@ class GatewayRunner:
         event_message_id: Optional[str] = None,
         media_urls: Optional[List[str]] = None,
         media_types: Optional[List[str]] = None,
+        team_context: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Execute a background agent task and deliver the result to the chat."""
         from run_agent import AIAgent
@@ -11443,6 +11513,7 @@ class GatewayRunner:
                     thread_id=source.thread_id,
                     session_db=self._session_db,
                     fallback_model=self._fallback_model,
+                    team_context=team_context,
                 )
                 try:
                     return agent.run_conversation(
@@ -14681,6 +14752,7 @@ class GatewayRunner:
         enabled_toolsets: list,
         ephemeral_prompt: str,
         cache_keys: dict | None = None,
+        team_context: dict | None = None,
     ) -> str:
         """Compute a stable string key from agent config values.
 
@@ -14705,6 +14777,7 @@ class GatewayRunner:
         _api_key_fingerprint = hashlib.sha256(_api_key.encode()).hexdigest() if _api_key else ""
 
         _cache_keys_sorted = sorted((cache_keys or {}).items())
+        _team_context_sorted = sorted((team_context or {}).items())
 
         blob = _j.dumps(
             [
@@ -14718,6 +14791,7 @@ class GatewayRunner:
                 # cached agent and doesn't affect system prompt or tools.
                 ephemeral_prompt or "",
                 _cache_keys_sorted,
+                _team_context_sorted,
             ],
             sort_keys=True,
             default=str,
@@ -15118,6 +15192,7 @@ class GatewayRunner:
         session_key: str = None,
         run_generation: Optional[int] = None,
         event_message_id: Optional[str] = None,
+        team_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Forward the message to a remote Hermes API server instead of
         running a local AIAgent.
@@ -15187,6 +15262,18 @@ class GatewayRunner:
             headers["Authorization"] = f"Bearer {proxy_key}"
         if session_id:
             headers["X-Hermes-Session-Id"] = session_id
+        if team_context:
+            team_token = (
+                os.getenv("HERMES_TEAM_CLOUD_SERVICE_TOKEN", "").strip()
+                or os.getenv("API_SERVER_TEAM_CLOUD_SERVICE_TOKEN", "").strip()
+            )
+            if team_token:
+                headers["X-Hermes-Team-Cloud-Token"] = team_token
+                headers["X-Hermes-Org-Id"] = str(team_context.get("org_id") or "")
+                headers["X-Hermes-Team-Id"] = str(team_context.get("team_id") or "")
+                if team_context.get("project_id"):
+                    headers["X-Hermes-Project-Id"] = str(team_context.get("project_id"))
+                headers["X-Hermes-Member-Id"] = str(team_context.get("member_id") or "")
 
         body = {
             "model": "hermes-agent",
@@ -15406,6 +15493,7 @@ class GatewayRunner:
         _interrupt_depth: int = 0,
         event_message_id: Optional[str] = None,
         channel_prompt: Optional[str] = None,
+        team_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Run the agent with the given message and context.
@@ -15430,6 +15518,7 @@ class GatewayRunner:
                 session_key=session_key,
                 run_generation=run_generation,
                 event_message_id=event_message_id,
+                team_context=team_context,
             )
 
         from run_agent import AIAgent
@@ -16259,6 +16348,7 @@ class GatewayRunner:
                 enabled_toolsets,
                 combined_ephemeral,
                 cache_keys=self._extract_cache_busting_config(user_config),
+                team_context=team_context,
             )
             agent = None
             _cache_lock = getattr(self, "_agent_cache_lock", None)
@@ -16308,6 +16398,7 @@ class GatewayRunner:
                     chat_type=source.chat_type,
                     thread_id=source.thread_id,
                     gateway_session_key=session_key,
+                    team_context=team_context,
                     session_db=self._session_db,
                     fallback_model=self._fallback_model,
                 )

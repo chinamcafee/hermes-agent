@@ -61,6 +61,14 @@ MAX_REQUEST_BYTES = 10_000_000  # 10 MB — accommodates long agent conversation
 CHAT_COMPLETIONS_SSE_KEEPALIVE_SECONDS = 30.0
 MAX_NORMALIZED_TEXT_LENGTH = 65_536  # 64 KB cap for normalized content parts
 MAX_CONTENT_LIST_SIZE = 1_000  # Max items when content is an array
+TEAM_CLOUD_TOKEN_HEADER = "X-Hermes-Team-Cloud-Token"
+TEAM_IDENTITY_HEADERS = {
+    "org_id": "X-Hermes-Org-Id",
+    "team_id": "X-Hermes-Team-Id",
+    "project_id": "X-Hermes-Project-Id",
+    "member_id": "X-Hermes-Member-Id",
+}
+REQUIRED_TEAM_IDENTITY_FIELDS = ("org_id", "team_id", "member_id")
 
 
 def _coerce_port(value: Any, default: int = DEFAULT_PORT) -> int:
@@ -452,7 +460,12 @@ class ResponseStore:
 
 _CORS_HEADERS = {
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Authorization, Content-Type, Idempotency-Key",
+    "Access-Control-Allow-Headers": (
+        "Authorization, Content-Type, Idempotency-Key, "
+        "X-Hermes-Session-Id, X-Hermes-Session-Key, "
+        "X-Hermes-Team-Cloud-Token, X-Hermes-Org-Id, "
+        "X-Hermes-Team-Id, X-Hermes-Project-Id, X-Hermes-Member-Id"
+    ),
 }
 
 
@@ -645,6 +658,10 @@ class APIServerAdapter(BasePlatformAdapter):
             raw_port = os.getenv("API_SERVER_PORT", str(DEFAULT_PORT))
         self._port: int = _coerce_port(raw_port, DEFAULT_PORT)
         self._api_key: str = extra.get("key", os.getenv("API_SERVER_KEY", ""))
+        self._team_cloud_service_token: str = extra.get(
+            "team_cloud_service_token",
+            os.getenv("API_SERVER_TEAM_CLOUD_SERVICE_TOKEN", ""),
+        )
         self._cors_origins: tuple[str, ...] = self._parse_cors_origins(
             extra.get("cors_origins", os.getenv("API_SERVER_CORS_ORIGINS", "")),
         )
@@ -826,6 +843,82 @@ class APIServerAdapter(BasePlatformAdapter):
 
         return raw, None
 
+    def _parse_team_context_headers(
+        self,
+        request: "web.Request",
+    ) -> tuple[Optional[Dict[str, str]], Optional["web.Response"]]:
+        """Extract trusted Team Cloud identity headers.
+
+        The ordinary API bearer key authenticates API use. Enterprise
+        identity headers additionally require a Team Cloud service token so
+        arbitrary API clients cannot mint org/team/member context.
+        """
+        raw_context = {
+            field_name: request.headers.get(header_name, "").strip()
+            for field_name, header_name in TEAM_IDENTITY_HEADERS.items()
+        }
+        if not any(raw_context.values()):
+            return None, None
+
+        if not self._team_cloud_service_token:
+            return None, web.json_response(
+                _openai_error(
+                    "Team identity headers require a configured Team Cloud service token.",
+                    code="team_identity_not_configured",
+                ),
+                status=403,
+            )
+
+        supplied_token = request.headers.get(TEAM_CLOUD_TOKEN_HEADER, "").strip()
+        if not supplied_token or not hmac.compare_digest(
+            supplied_token,
+            self._team_cloud_service_token,
+        ):
+            return None, web.json_response(
+                _openai_error(
+                    "Invalid Team Cloud service token.",
+                    code="invalid_team_cloud_service_token",
+                ),
+                status=401,
+            )
+
+        for field_name in REQUIRED_TEAM_IDENTITY_FIELDS:
+            if not raw_context[field_name]:
+                return None, web.json_response(
+                    _openai_error(
+                        f"Missing required team identity header: {TEAM_IDENTITY_HEADERS[field_name]}",
+                        code="missing_team_identity_header",
+                    ),
+                    status=400,
+                )
+
+        for field_name, value in raw_context.items():
+            if not value:
+                continue
+            if re.search(r"[\r\n\x00]", value):
+                return None, web.json_response(
+                    _openai_error(
+                        f"Invalid team identity header: {TEAM_IDENTITY_HEADERS[field_name]}",
+                        code="invalid_team_identity_header",
+                    ),
+                    status=400,
+                )
+            if len(value) > self._MAX_SESSION_HEADER_LEN:
+                return None, web.json_response(
+                    _openai_error(
+                        f"Team identity header too long: {TEAM_IDENTITY_HEADERS[field_name]}",
+                        code="team_identity_header_too_long",
+                    ),
+                    status=400,
+                )
+
+        team_context = {
+            field_name: value
+            for field_name, value in raw_context.items()
+            if value
+        }
+        return team_context, None
+
     # ------------------------------------------------------------------
     # Session DB helper
     # ------------------------------------------------------------------
@@ -857,6 +950,7 @@ class APIServerAdapter(BasePlatformAdapter):
         tool_start_callback=None,
         tool_complete_callback=None,
         gateway_session_key: Optional[str] = None,
+        team_context: Optional[Dict[str, str]] = None,
     ) -> Any:
         """
         Create an AIAgent instance using the gateway's runtime config.
@@ -908,6 +1002,7 @@ class APIServerAdapter(BasePlatformAdapter):
             fallback_model=fallback_model,
             reasoning_config=reasoning_config,
             gateway_session_key=gateway_session_key,
+            team_context=team_context,
         )
         return agent
 
@@ -1004,6 +1099,9 @@ class APIServerAdapter(BasePlatformAdapter):
                 "approval_events": True,
                 "session_continuity_header": "X-Hermes-Session-Id",
                 "session_key_header": "X-Hermes-Session-Key",
+                "team_identity_headers": TEAM_IDENTITY_HEADERS,
+                "team_identity_service_token_header": TEAM_CLOUD_TOKEN_HEADER,
+                "team_identity_headers_enabled": bool(self._team_cloud_service_token),
                 "cors": bool(self._cors_origins),
             },
             "endpoints": {
@@ -1025,6 +1123,10 @@ class APIServerAdapter(BasePlatformAdapter):
         auth_err = self._check_auth(request)
         if auth_err:
             return auth_err
+
+        team_context, team_context_err = self._parse_team_context_headers(request)
+        if team_context_err is not None:
+            return team_context_err
 
         # Parse request body
         try:
@@ -1220,6 +1322,7 @@ class APIServerAdapter(BasePlatformAdapter):
                 tool_complete_callback=_on_tool_complete,
                 agent_ref=agent_ref,
                 gateway_session_key=gateway_session_key,
+                team_context=team_context,
             ))
             # Ensure SSE drain loops can terminate without relying on polling
             # agent_task.done(), which can race with queue timeout checks.
@@ -1239,6 +1342,7 @@ class APIServerAdapter(BasePlatformAdapter):
                 ephemeral_system_prompt=system_prompt,
                 session_id=session_id,
                 gateway_session_key=gateway_session_key,
+                team_context=team_context,
             )
 
         idempotency_key = request.headers.get("Idempotency-Key")
@@ -2100,6 +2204,10 @@ class APIServerAdapter(BasePlatformAdapter):
         if key_err is not None:
             return key_err
 
+        team_context, team_context_err = self._parse_team_context_headers(request)
+        if team_context_err is not None:
+            return team_context_err
+
         # Parse request body
         try:
             body = await request.json()
@@ -2252,6 +2360,7 @@ class APIServerAdapter(BasePlatformAdapter):
                 tool_complete_callback=_on_tool_complete,
                 agent_ref=agent_ref,
                 gateway_session_key=gateway_session_key,
+                team_context=team_context,
             ))
             # Ensure SSE drain loops can terminate without relying on polling
             # agent_task.done(), which can race with queue timeout checks.
@@ -2285,6 +2394,7 @@ class APIServerAdapter(BasePlatformAdapter):
                 ephemeral_system_prompt=instructions,
                 session_id=session_id,
                 gateway_session_key=gateway_session_key,
+                team_context=team_context,
             )
 
         idempotency_key = request.headers.get("Idempotency-Key")
@@ -2743,6 +2853,7 @@ class APIServerAdapter(BasePlatformAdapter):
         tool_complete_callback=None,
         agent_ref: Optional[list] = None,
         gateway_session_key: Optional[str] = None,
+        team_context: Optional[Dict[str, str]] = None,
     ) -> tuple:
         """
         Create an agent and run a conversation in a thread executor.
@@ -2766,6 +2877,7 @@ class APIServerAdapter(BasePlatformAdapter):
                 tool_start_callback=tool_start_callback,
                 tool_complete_callback=tool_complete_callback,
                 gateway_session_key=gateway_session_key,
+                team_context=team_context,
             )
             if agent_ref is not None:
                 agent_ref[0] = agent
@@ -2869,6 +2981,10 @@ class APIServerAdapter(BasePlatformAdapter):
         gateway_session_key, key_err = self._parse_session_key_header(request)
         if key_err is not None:
             return key_err
+
+        team_context, team_context_err = self._parse_team_context_headers(request)
+        if team_context_err is not None:
+            return team_context_err
 
         # Enforce concurrency limit
         if len(self._run_streams) >= self._MAX_CONCURRENT_RUNS:
@@ -2981,6 +3097,7 @@ class APIServerAdapter(BasePlatformAdapter):
                     stream_delta_callback=_text_cb,
                     tool_progress_callback=event_cb,
                     gateway_session_key=gateway_session_key,
+                    team_context=team_context,
                 )
                 self._active_run_agents[run_id] = agent
 

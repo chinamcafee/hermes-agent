@@ -1,0 +1,67 @@
+"""Final regression package contract for Team Cloud GA."""
+
+from __future__ import annotations
+
+from copy import deepcopy
+from typing import Any
+
+
+_GATES: tuple[dict[str, Any], ...] = (
+    {
+        "id": "full_foundation_smoke",
+        "command": "scripts/team-cloud-foundation-smoke.sh",
+        "covers": ["p1_platform", "p2_memory", "p3_governance", "p4_beta", "p5_release"],
+    },
+    {
+        "id": "security_negative_suite",
+        "command": (
+            "scripts/run_tests.sh tests/team_cloud/test_platform_security_negative.py "
+            "tests/team_cloud/test_security_test_suite.py tests/team_cloud/test_final_security_review.py"
+        ),
+        "covers": ["authn_negative", "authz_negative", "tool_policy_negative"],
+    },
+    {
+        "id": "backup_restore_drill",
+        "command": (
+            "scripts/run_tests.sh tests/team_cloud/test_backup_restore_drill.py "
+            "tests/team_cloud/test_platform_backup_restore_drill.py "
+            "tests/team_cloud/test_restore_preview.py tests/team_cloud/test_restore_execute.py"
+        ),
+        "covers": ["backup_export", "minio_storage", "restore_preview", "restore_execute"],
+    },
+    {
+        "id": "permission_matrix",
+        "command": (
+            "scripts/run_tests.sh tests/team_cloud/test_permission_explorer_ga.py "
+            "tests/team_cloud/test_team_tool_policy_hook.py tests/team_cloud/test_authz_chaos.py"
+        ),
+        "test_files": [
+            "tests/team_cloud/test_permission_explorer_ga.py",
+            "tests/team_cloud/test_team_tool_policy_hook.py",
+            "tests/team_cloud/test_authz_chaos.py",
+        ],
+        "covers": ["member_admin_boundaries", "tool_risk_policy", "authz_chaos"],
+    },
+)
+
+
+def build_final_regression_package() -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "name": "team-cloud-final-regression-v0",
+        "gates": deepcopy(list(_GATES)),
+        "acceptance_thresholds": {
+            "failed_tests": 0,
+            "open_critical_or_high_findings": 0,
+            "unreviewed_backup_restore_drills": 0,
+            "permission_matrix_exceptions": 0,
+        },
+        "exit_decision": "required_for_ga",
+        "verification": [
+            "scripts/run_tests.sh tests/team_cloud/test_final_regression.py",
+            "scripts/team-cloud-foundation-smoke.sh",
+        ],
+    }
+
+
+__all__ = ["build_final_regression_package"]

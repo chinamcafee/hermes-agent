@@ -1,0 +1,33 @@
+id,domain,criterion,evidence,owner,phase,ga_blocking
+GA-SEC-001,Security,Casdoor JWT issuer/audience/signature/exp/nbf validation rejects invalid tokens,Automated auth tests + P0-06 evidence,Backend + Security,P1,true
+GA-SEC-002,Security,Casdoor disabled user loses Team Cloud access within 60 seconds,Integration test + audit event,Backend + Security,P1,true
+GA-SEC-003,Security,SpiceDB permission matrix has positive and negative fixtures for all default roles,zed validate + integration tests,Backend + Security,P1,true
+GA-SEC-004,Security,personal memory cross-member read/write/delete attempts are 100 percent denied,Isolation test report,Runtime + QA,P2,true
+GA-SEC-005,Security,team_shared memory cross-org recall attempts are 100 percent denied,Vector search isolation test report,Runtime + QA,P2,true
+GA-SEC-006,Security,personal backup cross-member download attempts are 100 percent denied,Backup authorization test report,SRE + Security,P3,true
+GA-SEC-007,Security,high-risk tool calls require SpiceDB allow and Hermes approval,Tool policy test report,Runtime + Security,P3,true
+GA-SEC-008,Security,break-glass requires approval window notification and audit,Workflow test + audit export,Security,P3,true
+GA-PERF-001,Performance,Team API P95 latency meets endpoint budgets under pilot load,Load test report,Backend + SRE,P4,true
+GA-PERF-002,Performance,memory prefetch P95 is <= 500ms excluding LLM first token,Load test report,Runtime + SRE,P4,true
+GA-PERF-003,Performance,SpiceDB CheckPermission P95 is <= 30ms and batch check P95 <= 100ms,Metrics dashboard + load test,Backend + SRE,P4,true
+GA-PERF-004,Performance,pgvector query P95 has baseline and does not regress over beta threshold,Query benchmark report,Backend + SRE,P4,true
+GA-PERF-005,Performance,backup worker throughput satisfies maximum pilot tenant backup volume,Worker benchmark + queue lag dashboard,SRE,P4,false
+GA-PERF-006,Performance,outbox lag has dashboard and alert thresholds,Observability evidence,SRE,P4,true
+GA-BR-001,BackupRestore,PostgreSQL PITR drill succeeds within RPO/RTO target,Restore drill report,SRE,P4,true
+GA-BR-002,BackupRestore,SpiceDB relationship snapshot plus outbox replay drill succeeds,Restore drill report,Backend + SRE,P4,true
+GA-BR-003,BackupRestore,MinIO bucket restore preserves checksum and object_manifests mapping,Restore drill report,SRE,P4,true
+GA-BR-004,BackupRestore,Casdoor configuration and application restore succeeds,Restore drill report,SRE + Backend,P4,true
+GA-BR-005,BackupRestore,single-member personal memory backup restore preview and execute succeed,End-to-end restore test,Runtime + SRE,P3,true
+GA-BR-006,BackupRestore,organization export can be generated downloaded and re-imported in staging,Export/import drill,SRE + Backend,P3,true
+GA-REL-001,Release,Docker Compose deployment starts full stack with health checks,Smoke test report,SRE,P4,true
+GA-REL-002,Release,Helm chart deploys and rolls back cleanly,Deployment test report,SRE,P4,true
+GA-REL-003,Release,offline image bundle installs without internet access,Offline install report,SRE,P4,false
+GA-REL-004,Release,SBOM and license report cover all core components and Python dependencies,SBOM + license package,Security + Release,P5,true
+GA-REL-005,Release,upgrade and rollback guide validated against previous beta build,Upgrade drill report,SRE + Release,P5,true
+GA-DOC-001,Documentation,installation guide covers compose helm offline and troubleshooting,Docs review sign-off,Docs + Engineering,P5,true
+GA-DOC-002,Documentation,admin and user manuals cover members teams roles memory backup audit and permissions,Docs review sign-off,Product + Docs,P5,true
+GA-DOC-003,Documentation,API documentation covers auth identity headers memory backup audit and error model,API docs review,Backend + Docs,P5,true
+GA-DOC-004,Documentation,runbooks cover Casdoor SpiceDB PostgreSQL MinIO outbox backup cross-tenant alerts and tool abuse,Runbook review,SRE + Security,P5,true
+GA-PILOT-001,Pilot,at least three pilot teams run for two weeks with zero data leakage incidents,Pilot exit report,Product + Security,P4,true
+GA-PILOT-002,Pilot,no unresolved P0/P1 defects remain at beta exit,Bug triage report,Engineering,P4,true
+GA-SIGN-001,Signoff,Product requirements AuthN/AuthZ memory backup docs security and pilot owners sign off,GA sign-off record,Release,P5,true

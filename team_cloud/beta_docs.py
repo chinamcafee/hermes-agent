@@ -1,0 +1,89 @@
+"""Beta documentation package contract for Team Cloud."""
+
+from __future__ import annotations
+
+from copy import deepcopy
+from typing import Any
+
+
+_DOCUMENTS: tuple[dict[str, Any], ...] = (
+    {
+        "id": "pilot_install_quickstart",
+        "title": "Pilot install quickstart",
+        "required_artifacts": [
+            "P4-01-compose-hardening",
+            "P4-02-helm-chart",
+            "P4-03-offline-bundle",
+            "P4-09-upgrade-rollback",
+        ],
+        "audience": ["pilot_admin", "sre"],
+    },
+    {
+        "id": "pilot_onboarding_guide",
+        "title": "Pilot onboarding guide",
+        "source_artifact": "teamDoc/GADoc/artifacts/pilot/team-cloud-pilot-onboarding-v0.json",
+        "audience": ["pilot_admin", "team_lead"],
+    },
+    {
+        "id": "feedback_and_triage_guide",
+        "title": "Feedback and triage guide",
+        "source_artifact": "teamDoc/GADoc/artifacts/pilot/team-cloud-bug-triage-v0.json",
+        "audience": ["pilot_member", "support", "release_manager"],
+    },
+    {
+        "id": "known_issues",
+        "title": "Known issues and beta limitations",
+        "items": [
+            "helm_lint_requires_helm_binary",
+            "live_services_required_for_restore_drills",
+            "pilot_sla_is_best_effort_until_ga",
+            "production_data_import_requires_approved_backup_window",
+        ],
+        "audience": ["pilot_admin", "security_admin", "sre"],
+    },
+    {
+        "id": "beta_exit_checklist",
+        "title": "Beta exit checklist",
+        "required_signals": [
+            "fourteen_day_pilot_run",
+            "zero_open_p0_p1",
+            "security_suite_green",
+            "backup_restore_drill_green",
+            "chaos_drill_actions_assigned",
+        ],
+        "audience": ["release_manager", "security_admin", "product"],
+    },
+)
+
+_EVIDENCE_INDEX: dict[str, str] = {
+    "backup_restore": "teamDoc/GADoc/artifacts/drills/team-cloud-backup-restore-drill-v0.json",
+    "load": "teamDoc/GADoc/artifacts/load/team-cloud-load-test-plan-v0.json",
+    "security": "teamDoc/GADoc/artifacts/security/team-cloud-security-suite-v0.json",
+    "upgrade_rollback": "teamDoc/GADoc/artifacts/release/team-cloud-upgrade-rollback-v0.json",
+    "cost_quotas": "teamDoc/GADoc/artifacts/usage/team-cloud-cost-quotas-v0.json",
+    "chaos": "teamDoc/GADoc/artifacts/chaos/team-cloud-chaos-drills-v0.json",
+}
+
+
+def build_beta_documentation_package() -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "name": "team-cloud-beta-docs-v0",
+        "documents": deepcopy(list(_DOCUMENTS)),
+        "feedback": {
+            "channels": ["pilot_feedback_form", "admin_office_hours", "pilot-war-room"],
+            "required_fields": ["severity", "workflow", "impact", "repro_steps"],
+            "triage_reference": "teamDoc/GADoc/P4-11-bug-triage-process.md",
+        },
+        "release_blocker_rules": [
+            "security_data_leak",
+            "cross_org_access",
+            "backup_restore_failure",
+            "authz_fail_open",
+            "pilot_team_blocked",
+        ],
+        "evidence_index": deepcopy(_EVIDENCE_INDEX),
+    }
+
+
+__all__ = ["build_beta_documentation_package"]

@@ -13,6 +13,8 @@ Pure module-level utilities extracted from ``run_agent.py``:
   shape returned by tools like ``computer_use``.
 * ``_extract_file_mutation_targets`` / ``_extract_error_preview`` —
   per-turn file-mutation verifier inputs.
+* ``build_pre_tool_call_hook_kwargs`` — shared Team Cloud/plugin context
+  payload for every tool execution path.
 * ``_trajectory_normalize_msg`` — strip image blobs from a message for
   trajectory saving.
 
@@ -85,6 +87,30 @@ def _is_destructive_command(cmd: str) -> bool:
     if _REDIRECT_OVERWRITE.search(cmd):
         return True
     return False
+
+
+def build_pre_tool_call_hook_kwargs(
+    agent: Any,
+    *,
+    task_id: str = "",
+    tool_call_id: str = "",
+) -> dict[str, Any]:
+    """Build common ``pre_tool_call`` hook context for agent-owned paths."""
+    kwargs: dict[str, Any] = {
+        "task_id": task_id or "",
+        "session_id": getattr(agent, "session_id", None) or "",
+        "tool_call_id": tool_call_id or "",
+    }
+    team_context = getattr(agent, "team_context", None)
+    if team_context is not None:
+        kwargs["team_context"] = team_context
+    platform = getattr(agent, "platform", None) or ""
+    if platform:
+        kwargs["platform"] = platform
+    user_id = getattr(agent, "_user_id", None) or ""
+    if user_id:
+        kwargs["user_id"] = user_id
+    return kwargs
 
 
 def _is_mcp_tool_parallel_safe(tool_name: str) -> bool:
@@ -337,6 +363,7 @@ __all__ = [
     "_DESTRUCTIVE_PATTERNS",
     "_REDIRECT_OVERWRITE",
     "_is_destructive_command",
+    "build_pre_tool_call_hook_kwargs",
     "_should_parallelize_tool_batch",
     "_extract_parallel_scope_path",
     "_paths_overlap",

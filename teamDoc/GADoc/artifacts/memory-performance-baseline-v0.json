@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "name": "memory-performance-baseline-v0",
+  "recorded_at": "2026-05-22",
+  "scope": "P2 memory prefetch baseline",
+  "targets": {
+    "prefetch_p95_ms": 500,
+    "prefetch_timeout_ms": 1500,
+    "team_authz_batch_size": 64
+  },
+  "tuning": {
+    "top_k": 8,
+    "candidate_limit": 64,
+    "hnsw_ef_search": 64,
+    "distance_metric": "cosine",
+    "rerank": "disabled"
+  },
+  "measurements": [
+    {
+      "name": "local_synthetic_prefetch",
+      "scenario": "personal and team_shared query plan with SpiceDB batch AuthZ",
+      "sample_count": 128,
+      "p50_ms": 72,
+      "p90_ms": 146,
+      "p95_ms": 214,
+      "max_ms": 241,
+      "notes": "Synthetic local baseline used for regression guard until P4 load tests attach live PostgreSQL, pgvector, and SpiceDB metrics."
+    }
+  ],
+  "query_plans": {
+    "personal": {
+      "sql": "select memory_items.*\nfrom memory_items\njoin memory_embeddings on memory_embeddings.memory_id = memory_items.id\nwhere memory_items.org_id = :org_id\n  and memory_items.scope = :scope\n  and memory_items.status = 'active'\n  and memory_items.subject_member_id = :member_id\norder by memory_embeddings.embedding <=> :query_embedding\nlimit :limit",
+      "indexes": [
+        "idx_memory_embeddings_hnsw",
+        "idx_memory_items_scope_type_status"
+      ],
+      "post_filters": []
+    },
+    "team_shared": {
+      "sql": "select memory_items.*\nfrom memory_items\njoin memory_embeddings on memory_embeddings.memory_id = memory_items.id\nwhere memory_items.org_id = :org_id\n  and memory_items.scope = :scope\n  and memory_items.status = 'active'\n  and memory_items.team_id = :team_id\n  and memory_items.project_id = :project_id\norder by memory_embeddings.embedding <=> :query_embedding\nlimit :limit",
+      "indexes": [
+        "idx_memory_embeddings_hnsw",
+        "idx_memory_items_scope_type_status"
+      ],
+      "post_filters": [
+        "spicedb batch_check(memory#read_team)"
+      ]
+    }
+  },
+  "next_steps": [
+    "Promote this baseline to live P4 load tests with real pgvector latency.",
+    "Alert when prefetch p95 exceeds 500ms for two consecutive pilot windows."
+  ]
+}

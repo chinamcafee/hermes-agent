@@ -1,0 +1,9 @@
+name: team_policy
+version: 0.1.0
+description: "Team Cloud tool policy hook for enterprise authorization."
+author: Hermes Agent
+kind: backend
+provides_hooks:
+  - pre_tool_call
+hooks:
+  - pre_tool_call

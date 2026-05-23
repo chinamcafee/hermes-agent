@@ -1,0 +1,7 @@
+apiVersion: v2
+name: hermes-team-cloud
+description: Team Cloud deployment chart for Hermes Agent.
+type: application
+version: 0.1.0
+appVersion: "0.8.0-ga"
+

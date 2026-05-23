@@ -1,0 +1,148 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hermes-team-cloud-go-secrets
+type: Opaque
+stringData:
+  TEAM_CLOUD_SERVICE_TOKEN: change-me-before-deploy
+  TEAM_CLOUD_DATABASE_URL: postgres://hermes:change-me@postgres:5432/hermes_team_cloud?sslmode=require
+  TEAM_CLOUD_AUTHZ_TOKEN: change-me-before-deploy
+  TEAM_CLOUD_BACKUP_S3_ACCESS_KEY_ID: change-me-before-deploy
+  TEAM_CLOUD_BACKUP_S3_SECRET_ACCESS_KEY: change-me-before-deploy
+  TEAM_CLOUD_BACKUP_ENCRYPTION_KEY: change-me-before-deploy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes-team-cloud-go
+  labels:
+    app.kubernetes.io/name: hermes-team-cloud-go
+    app.kubernetes.io/component: team-cloud
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hermes-team-cloud-go
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hermes-team-cloud-go
+        app.kubernetes.io/component: team-cloud
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: team-cloud-go
+          image: ghcr.io/hermes-agent/team-cloud-go:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8780
+          env:
+            - name: TEAM_CLOUD_SERVICE_NAME
+              value: hermes-team-cloud-go
+            - name: TEAM_CLOUD_BIND_ADDR
+              value: :8780
+            - name: TEAM_CLOUD_AUTO_MIGRATE
+              value: "true"
+            - name: TEAM_CLOUD_CASDOOR_ISSUER
+              value: https://casdoor.example
+            - name: TEAM_CLOUD_CASDOOR_AUDIENCE
+              value: hermes-team-cloud
+            - name: TEAM_CLOUD_CASDOOR_JWKS_URL
+              value: https://casdoor.example/.well-known/jwks
+            - name: TEAM_CLOUD_AUTHZ_MODE
+              value: spicedb_http
+            - name: TEAM_CLOUD_AUTHZ_ENDPOINT
+              value: http://spicedb:8443
+            - name: TEAM_CLOUD_BACKUP_OBJECT_MODE
+              value: s3
+            - name: TEAM_CLOUD_BACKUP_S3_ENDPOINT
+              value: http://minio:9000
+            - name: TEAM_CLOUD_BACKUP_S3_BUCKET
+              value: hermes-personal-backups
+            - name: TEAM_CLOUD_BACKUP_S3_REGION
+              value: us-east-1
+            - name: TEAM_CLOUD_BACKUP_SCHEDULER_ENABLED
+              value: "true"
+            - name: TEAM_CLOUD_BACKUP_SCHEDULER_INTERVAL_SECONDS
+              value: "3600"
+            - name: TEAM_CLOUD_DASHBOARD_ENABLED
+              value: "true"
+            - name: TEAM_CLOUD_DASHBOARD_DIR
+              value: /usr/share/team-cloud-go/dashboard
+            - name: TEAM_CLOUD_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-team-cloud-go-secrets
+                  key: TEAM_CLOUD_SERVICE_TOKEN
+            - name: TEAM_CLOUD_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-team-cloud-go-secrets
+                  key: TEAM_CLOUD_DATABASE_URL
+            - name: TEAM_CLOUD_AUTHZ_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-team-cloud-go-secrets
+                  key: TEAM_CLOUD_AUTHZ_TOKEN
+            - name: TEAM_CLOUD_BACKUP_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-team-cloud-go-secrets
+                  key: TEAM_CLOUD_BACKUP_S3_ACCESS_KEY_ID
+            - name: TEAM_CLOUD_BACKUP_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-team-cloud-go-secrets
+                  key: TEAM_CLOUD_BACKUP_S3_SECRET_ACCESS_KEY
+            - name: TEAM_CLOUD_BACKUP_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-team-cloud-go-secrets
+                  key: TEAM_CLOUD_BACKUP_ENCRYPTION_KEY
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-team-cloud-go
+  labels:
+    app.kubernetes.io/name: hermes-team-cloud-go
+    app.kubernetes.io/component: team-cloud
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: hermes-team-cloud-go
+  ports:
+    - name: http
+      port: 8780
+      targetPort: http

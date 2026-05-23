@@ -1,0 +1,144 @@
+definition user {}
+
+definition service_account {
+  relation parent_org: organization
+  relation owner: user
+  relation admin: user
+
+  permission use = owner + admin + parent_org->manage_service_accounts
+  permission manage = owner + admin + parent_org->manage_service_accounts
+}
+
+definition organization {
+  relation owner: user
+  relation admin: user
+  relation security_admin: user
+  relation member: user
+  relation guest: user
+
+  permission view = owner + admin + security_admin + member + guest
+  permission manage = owner + admin
+  permission manage_members = owner + admin
+  permission manage_service_accounts = owner + admin
+  permission manage_tools = owner + admin + security_admin
+  permission read_audit = owner + admin + security_admin
+  permission export = owner + admin
+  permission delete = owner
+  permission break_glass_approve = owner + security_admin
+}
+
+definition team {
+  relation parent: organization
+  relation admin: user
+  relation curator: user
+  relation developer: user
+  relation member: user
+  relation guest: user
+  relation service_account: service_account
+
+  permission read = admin + curator + developer + member + guest + service_account + parent->manage
+  permission manage = admin + parent->manage
+  permission manage_member = admin + parent->manage_members
+  permission run_agent = admin + developer + member + service_account + parent->manage
+  permission propose_memory = admin + curator + developer + member + service_account
+  permission read_memory = admin + curator + developer + member + guest + service_account + parent->manage
+  permission write_memory = admin + curator + parent->manage
+  permission review_memory = admin + curator + parent->manage
+}
+
+definition project {
+  relation parent: team
+  relation admin: user
+  relation developer: user
+  relation member: user
+  relation guest: user
+  relation service_account: service_account
+
+  permission read = admin + developer + member + guest + service_account + parent->manage
+  permission write = admin + developer + service_account + parent->manage
+  permission manage = admin + parent->manage
+  permission run_agent = admin + developer + member + service_account + parent->run_agent
+  permission manage_session = admin + parent->manage
+}
+
+definition session {
+  relation parent_project: project
+  relation owner: user | service_account
+  relation participant: user | service_account
+
+  permission read = owner + participant + parent_project->read
+  permission run = owner + participant + parent_project->run_agent
+  permission delete = owner + parent_project->manage_session
+  permission export = owner + parent_project->manage_session
+}
+
+definition memory {
+  relation owner: user
+  relation parent_team: team
+  relation parent_project: project
+  relation curator: user
+  relation approved_break_glass_reader: user
+
+  permission read_personal = owner
+  permission write_personal = owner
+  permission delete_personal = owner
+  permission backup_personal = owner
+  permission restore_personal = owner
+  permission break_glass_read_personal = approved_break_glass_reader
+
+  permission read_team = parent_team->read_memory + parent_project->read
+  permission propose_team = parent_team->propose_memory + parent_project->run_agent
+  permission write_team = curator + parent_team->write_memory + parent_project->manage
+  permission review = curator + parent_team->review_memory + parent_project->manage
+  permission archive = curator + parent_team->review_memory + parent_project->manage
+  permission delete_team = curator + parent_team->manage + parent_project->manage
+
+  permission read = read_personal + read_team + break_glass_read_personal
+  permission write = write_personal + write_team
+  permission delete = delete_personal + delete_team
+}
+
+definition document {
+  relation parent_project: project
+  relation parent_team: team
+  relation uploader: user | service_account
+
+  permission read = uploader + parent_project->read + parent_team->read
+  permission write = uploader + parent_project->write + parent_team->manage
+  permission ingest = uploader + parent_project->write + parent_team->manage
+  permission delete = uploader + parent_project->manage + parent_team->manage
+}
+
+definition tool {
+  relation parent_org: organization
+  relation safe_executor: user | service_account | team#member | team#developer | project#member | project#developer
+  relation network_executor: user | service_account | team#developer | project#developer
+  relation file_read_executor: user | service_account | team#member | team#developer | project#member | project#developer
+  relation file_write_executor: user | service_account | team#developer | project#developer
+  relation terminal_executor: user | service_account | team#developer | project#developer
+  relation destructive_executor: user | service_account
+  relation approver: user
+
+  permission safe_execute = safe_executor + parent_org->manage_tools
+  permission network_execute = network_executor + parent_org->manage_tools
+  permission file_read_execute = file_read_executor + parent_org->manage_tools
+  permission file_write_execute = file_write_executor + parent_org->manage_tools
+  permission terminal_execute = terminal_executor + parent_org->manage_tools
+  permission destructive_execute = destructive_executor + parent_org->manage_tools
+  permission approve = approver + parent_org->manage_tools
+}
+
+definition backup {
+  relation parent_org: organization
+  relation owner: user
+  relation operator: user | service_account
+  relation approved_break_glass_reader: user
+
+  permission create = owner + operator
+  permission read = owner
+  permission restore = owner
+  permission delete = owner + parent_org->delete
+  permission manage = owner + parent_org->manage
+  permission break_glass_read = approved_break_glass_reader
+  permission audit_read = parent_org->read_audit
+}

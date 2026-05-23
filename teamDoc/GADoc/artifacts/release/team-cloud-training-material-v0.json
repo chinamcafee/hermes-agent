@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "name": "team-cloud-training-material-v0",
+  "modules": [
+    {
+      "id": "admin_training",
+      "audience": "organization_admin",
+      "duration_minutes": 90,
+      "topics": [
+        "organization_setup",
+        "member_lifecycle",
+        "tool_policy_management",
+        "backup_restore_operations"
+      ],
+      "prerequisites": [
+        "P5-03 install guide",
+        "P5-04 admin manual"
+      ]
+    },
+    {
+      "id": "member_training",
+      "audience": "team_member",
+      "duration_minutes": 60,
+      "topics": [
+        "first_login",
+        "team_chat",
+        "personal_memory",
+        "team_shared_memory"
+      ],
+      "prerequisites": [
+        "P5-04 user manual"
+      ]
+    },
+    {
+      "id": "faq",
+      "audience": "admin_and_member",
+      "topics": [
+        "identity_map",
+        "permission_denied",
+        "backup_restore",
+        "offline_bundle"
+      ],
+      "source_docs": [
+        "P5-03-install-guide.md",
+        "P5-04-admin-user-manuals.md",
+        "P5-09-support-playbook.md",
+        "P5-10-migration-guide.md"
+      ]
+    }
+  ],
+  "hands_on_labs": [
+    "create_org_and_invite_member",
+    "memory_review_flow",
+    "run_foundation_smoke"
+  ],
+  "verification": [
+    "scripts/run_tests.sh tests/team_cloud/test_training_material.py",
+    "scripts/team-cloud-foundation-smoke.sh"
+  ]
+}

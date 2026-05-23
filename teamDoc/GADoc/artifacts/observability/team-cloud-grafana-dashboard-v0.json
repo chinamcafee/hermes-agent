@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 39,
+  "title": "Hermes Team Cloud GA",
+  "uid": "hermes-team-cloud-ga",
+  "tags": ["hermes", "team-cloud", "ga"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Team API",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (path, status) (rate(team_cloud_http_requests_total[5m]))",
+          "legendFormat": "{{path}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "SpiceDB AuthZ",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(team_cloud_spicedb_check_latency_ms_bucket[5m])) by (le))",
+          "legendFormat": "p95 check latency"
+        },
+        {
+          "expr": "sum(rate(team_cloud_spicedb_denies_total[5m]))",
+          "legendFormat": "deny rate"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "PostgreSQL pgvector",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(team_cloud_pgvector_query_latency_ms_bucket[5m])) by (le))",
+          "legendFormat": "p95 query latency"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "MinIO Object Storage",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(team_cloud_minio_operation_latency_ms_bucket[5m])) by (le, operation))",
+          "legendFormat": "{{operation}} p95"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Workers",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "max by (queue) (team_cloud_worker_lag_seconds)",
+          "legendFormat": "{{queue}} lag"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Audit and Security",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (action, decision) (rate(team_cloud_audit_events_total[5m]))",
+          "legendFormat": "{{action}} {{decision}}"
+        }
+      ]
+    }
+  ]
+}
+

@@ -1,0 +1,2056 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hermes Team Cloud</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f5f7fa;
+        color: #172033;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #f5f7fa;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        min-height: 40px;
+        border: 1px solid #1d4ed8;
+        border-radius: 6px;
+        padding: 0 14px;
+        background: #1d4ed8;
+        color: #ffffff;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        border-color: #cbd5e1;
+        background: #ffffff;
+        color: #172033;
+      }
+
+      button.tab {
+        border-color: transparent;
+        background: transparent;
+        color: #344054;
+      }
+
+      button.tab.active {
+        border-color: #1d4ed8;
+        background: #eff6ff;
+        color: #1d4ed8;
+      }
+
+      button.danger {
+        border-color: #dc2626;
+        background: #dc2626;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible,
+      textarea:focus-visible,
+      a:focus-visible {
+        outline: 3px solid #f59e0b;
+        outline-offset: 2px;
+      }
+
+      .skip-link {
+        position: absolute;
+        top: -48px;
+        left: 16px;
+        z-index: 20;
+        border-radius: 6px;
+        padding: 10px 12px;
+        background: #172033;
+        color: #ffffff;
+        text-decoration: none;
+      }
+
+      .skip-link:focus {
+        top: 10px;
+      }
+
+      .app-shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px clamp(16px, 4vw, 40px);
+        border-bottom: 1px solid #d8dee9;
+        background: #ffffff;
+      }
+
+      .brand {
+        display: grid;
+        gap: 2px;
+      }
+
+      .brand strong {
+        font-size: 18px;
+      }
+
+      .brand span,
+      .muted {
+        color: #5f6b7a;
+        font-size: 13px;
+      }
+
+      .header-actions,
+      .language-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .language-toggle button {
+        min-height: 34px;
+        padding: 0 10px;
+      }
+
+      .language-toggle button[aria-pressed="true"] {
+        border-color: #1d4ed8;
+        background: #eff6ff;
+        color: #1d4ed8;
+      }
+
+      main {
+        width: min(1180px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 32px 0;
+      }
+
+      [data-view],
+      [data-admin-panel] {
+        display: none;
+      }
+
+      [data-view].active,
+      [data-admin-panel].active {
+        display: block;
+      }
+
+      .login-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+        gap: 24px;
+        align-items: start;
+      }
+
+      .summary,
+      .panel,
+      .notice {
+        border: 1px solid #d8dee9;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .summary,
+      .panel {
+        padding: 20px;
+      }
+
+      .summary h1,
+      .panel h2,
+      .panel h3 {
+        margin: 0 0 12px;
+        color: #0f172a;
+        line-height: 1.2;
+      }
+
+      .summary h1 {
+        font-size: 28px;
+      }
+
+      .panel h2 {
+        font-size: 18px;
+      }
+
+      .panel h3 {
+        font-size: 15px;
+      }
+
+      .summary p,
+      .panel p {
+        margin: 0 0 16px;
+        color: #536173;
+        line-height: 1.6;
+      }
+
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field label {
+        color: #344054;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        min-height: 40px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 0 10px;
+        background: #ffffff;
+        color: #172033;
+      }
+
+      textarea {
+        min-height: 96px;
+        padding: 10px;
+        resize: vertical;
+      }
+
+      dl {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: 8px 12px;
+        margin: 0;
+      }
+
+      dt {
+        color: #5f6b7a;
+        font-size: 13px;
+      }
+
+      dd {
+        margin: 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .notice,
+      .panel-error {
+        display: none;
+        border: 1px solid #fecdd3;
+        border-radius: 8px;
+        color: #7f1d1d;
+        background: #fff1f2;
+      }
+
+      .notice {
+        margin-bottom: 16px;
+        padding: 12px 14px;
+      }
+
+      .panel-error {
+        margin: 0 0 12px;
+        padding: 10px 12px;
+      }
+
+      .notice.active,
+      .panel-error.active {
+        display: block;
+      }
+
+      .empty-state,
+      .permission-state {
+        border: 1px dashed #cbd5e1;
+        border-radius: 8px;
+        margin: 10px 0;
+        padding: 12px;
+        background: #f8fafc;
+        color: #475467;
+      }
+
+      .permission-state {
+        border-style: solid;
+        border-color: #fde68a;
+        background: #fffbeb;
+        color: #92400e;
+      }
+
+      .bulk-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin: 0 0 12px;
+      }
+
+      .confirm-dialog {
+        border: 1px solid #fecdd3;
+        border-radius: 8px;
+        margin: 0 0 12px;
+        padding: 14px;
+        background: #fff7f7;
+      }
+
+      .confirm-dialog-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .org-list,
+      .entity-list {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .org-list li,
+      .entity-list li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 44px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 10px 12px;
+        background: #fbfdff;
+      }
+
+      .entity-main {
+        display: grid;
+        gap: 3px;
+        min-width: 0;
+      }
+
+      .entity-main strong,
+      .entity-main span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .tag {
+        border-radius: 999px;
+        padding: 3px 8px;
+        background: #e0f2fe;
+        color: #075985;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .tag.warning {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .tag.danger {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(140px, 1fr)) auto;
+        gap: 10px;
+        align-items: end;
+        margin-bottom: 14px;
+      }
+
+      .form-grid.member-form {
+        grid-template-columns: repeat(4, minmax(140px, 1fr)) auto;
+      }
+
+      .form-grid.chat-form {
+        grid-template-columns: repeat(3, minmax(140px, 1fr)) auto;
+      }
+
+      .field.wide {
+        grid-column: 1 / -1;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      .decision {
+        border: 1px solid #d8dee9;
+        border-radius: 8px;
+        padding: 14px;
+        background: #fbfdff;
+      }
+
+      .decision.allowed {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+      }
+
+      .decision.denied {
+        border-color: #fecdd3;
+        background: #fff1f2;
+      }
+
+      .event-list {
+        display: grid;
+        gap: 8px;
+        margin: 12px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .event-list li {
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 10px 12px;
+        background: #fbfdff;
+      }
+
+      .event-list code {
+        display: block;
+        margin-top: 6px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 620px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: #475467;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      @media (max-width: 880px) {
+        .form-grid,
+        .form-grid.member-form,
+        .form-grid.chat-form {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 760px) {
+        header,
+        .toolbar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .login-layout,
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content" data-i18n="skip_to_main">Skip to main content</a>
+    <div class="app-shell">
+      <header>
+        <div class="brand">
+          <strong>Hermes Team Cloud</strong>
+          <span id="callback-status" data-i18n="signed_out">Signed out</span>
+        </div>
+        <div class="header-actions">
+          <div class="language-toggle" role="group" aria-label="Language">
+            <button class="secondary" type="button" data-locale="en" data-i18n-active aria-pressed="true">EN</button>
+            <button class="secondary" type="button" data-locale="zh-CN" aria-pressed="false">中文</button>
+          </div>
+          <button id="logout-button" class="secondary" type="button" data-i18n="sign_out">Sign out</button>
+        </div>
+      </header>
+
+      <main id="main-content" tabindex="-1">
+        <div id="shell-error" class="notice" role="alert"></div>
+
+        <section data-view="login" class="active">
+          <div class="login-layout">
+            <div class="summary">
+              <h1 data-i18n="team_workspace_access">Team workspace access</h1>
+              <p data-i18n="login_summary">Sign in with Casdoor to open the local Team Cloud console and select an organization context.</p>
+              <button id="login-button" type="button" data-i18n="sign_in">Sign in with Casdoor</button>
+            </div>
+
+            <aside class="panel">
+              <h2>Connection</h2>
+              <dl>
+                <dt>Team API</dt>
+                <dd id="api-base-label">http://localhost:8780</dd>
+                <dt>Callback</dt>
+                <dd id="redirect-uri-label"></dd>
+              </dl>
+            </aside>
+          </div>
+        </section>
+
+        <section data-view="app">
+          <div class="toolbar">
+            <div>
+              <h1 data-i18n="team_console">Team Console</h1>
+              <p class="muted" data-i18n="team_console_summary">Organization-scoped administration shell.</p>
+            </div>
+            <button id="refresh-organizations" class="secondary" type="button" data-i18n="refresh_organizations">Refresh organizations</button>
+          </div>
+
+          <div class="grid">
+            <aside class="panel">
+              <h2>Session</h2>
+              <dl>
+                <dt>Subject</dt>
+                <dd id="session-subject">-</dd>
+                <dt>Email</dt>
+                <dd id="session-email">-</dd>
+                <dt>Name</dt>
+                <dd id="session-name">-</dd>
+              </dl>
+            </aside>
+
+            <section class="panel stack">
+              <div class="field">
+                <label for="organization-switcher">Organization</label>
+                <select id="organization-switcher">
+                  <option value="">No organizations loaded</option>
+                </select>
+              </div>
+              <ul id="organization-list" class="org-list"></ul>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="tabs" role="tablist" aria-label="Administration">
+              <button id="teams-tab" class="tab active" type="button" data-admin-tab="teams" role="tab" aria-selected="true" aria-controls="teams-panel" tabindex="0">Teams</button>
+              <button id="members-tab" class="tab" type="button" data-admin-tab="members" role="tab" aria-selected="false" aria-controls="members-panel" tabindex="-1">Members</button>
+              <button id="roles-tab" class="tab" type="button" data-admin-tab="roles" role="tab" aria-selected="false" aria-controls="roles-panel" tabindex="-1">Roles</button>
+              <button id="permission-tab" class="tab" type="button" data-admin-tab="permission" role="tab" aria-selected="false" aria-controls="permission-panel" tabindex="-1">Permission</button>
+              <button id="audit-tab" class="tab" type="button" data-admin-tab="audit" role="tab" aria-selected="false" aria-controls="audit-panel" tabindex="-1">Audit</button>
+              <button id="usage-tab" class="tab" type="button" data-admin-tab="usage" role="tab" aria-selected="false" aria-controls="usage-panel" tabindex="-1">Usage</button>
+              <button id="chat-tab" class="tab" type="button" data-admin-tab="chat" role="tab" aria-selected="false" aria-controls="chat-panel" tabindex="-1">Chat</button>
+            </div>
+
+            <section id="teams-panel" data-admin-panel="teams" class="active" role="tabpanel" aria-labelledby="teams-tab">
+              <div id="teams-error" class="panel-error" role="alert"></div>
+              <div id="teams-permission-state" class="permission-state" role="status" hidden></div>
+              <form id="create-team-form" class="form-grid">
+                <div class="field">
+                  <label for="team-slug">Slug</label>
+                  <input id="team-slug" name="slug" autocomplete="off" required>
+                </div>
+                <div class="field">
+                  <label for="team-name">Name</label>
+                  <input id="team-name" name="name" autocomplete="off" required>
+                </div>
+                <div class="field">
+                  <label for="team-note">Scope</label>
+                  <input id="team-note" name="scope" value="organization" disabled>
+                </div>
+                <button type="submit">Create team</button>
+              </form>
+              <div id="teams-empty-state" class="empty-state" hidden data-i18n="empty_teams">No teams available.</div>
+              <ul id="team-list" class="entity-list"></ul>
+            </section>
+
+            <section id="members-panel" data-admin-panel="members" role="tabpanel" aria-labelledby="members-tab">
+              <div id="members-error" class="panel-error" role="alert"></div>
+              <div id="members-permission-state" class="permission-state" role="status" hidden></div>
+              <form id="invite-member-form" class="form-grid member-form">
+                <div class="field">
+                  <label for="member-email">Email</label>
+                  <input id="member-email" name="email" type="email" autocomplete="off" required>
+                </div>
+                <div class="field">
+                  <label for="member-display-name">Display name</label>
+                  <input id="member-display-name" name="display_name" autocomplete="off" required>
+                </div>
+                <div class="field">
+                  <label for="member-user-id">User ID</label>
+                  <input id="member-user-id" name="user_id" autocomplete="off" required>
+                </div>
+                <div class="field">
+                  <label for="member-role">Role</label>
+                  <select id="member-role" name="role">
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                    <option value="security_admin">Security admin</option>
+                    <option value="guest">Guest</option>
+                  </select>
+                </div>
+                <button type="submit">Invite member</button>
+              </form>
+              <div class="bulk-actions">
+                <button id="members-bulk-disable" class="danger" type="button" disabled>Disable selected</button>
+              </div>
+              <div
+                id="members-bulk-confirm"
+                class="confirm-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="members-bulk-confirm-title"
+                hidden
+              >
+                <h3 id="members-bulk-confirm-title">Disable selected members?</h3>
+                <p><span id="members-bulk-confirm-count">0</span> members will be suspended.</p>
+                <div class="confirm-dialog-actions">
+                  <button id="members-bulk-confirm-cancel" class="secondary" type="button">Cancel</button>
+                  <button id="members-bulk-confirm-apply" class="danger" type="button">Disable members</button>
+                </div>
+              </div>
+              <div id="members-empty-state" class="empty-state" hidden>No members available.</div>
+              <ul id="member-list" class="entity-list"></ul>
+            </section>
+
+            <section id="roles-panel" data-admin-panel="roles" role="tabpanel" aria-labelledby="roles-tab">
+              <div id="roles-error" class="panel-error" role="alert"></div>
+              <div class="table-wrap">
+                <table id="roles-table">
+                  <thead>
+                    <tr>
+                      <th>Role</th>
+                      <th>Purpose</th>
+                      <th>Baseline permissions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="roles-table-body"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section id="permission-panel" data-admin-panel="permission" role="tabpanel" aria-labelledby="permission-tab">
+              <div id="permission-error" class="panel-error" role="alert"></div>
+              <form id="permission-explain-form" class="form-grid member-form">
+                <div class="field">
+                  <label for="permission-subject-type">Subject type</label>
+                  <select id="permission-subject-type" name="subject_type">
+                    <option value="user">User</option>
+                    <option value="service_account">Service account</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="permission-subject-id">Subject ID</label>
+                  <input id="permission-subject-id" name="subject_id" autocomplete="off" required>
+                </div>
+                <div class="field">
+                  <label for="permission-resource-type">Resource type</label>
+                  <input id="permission-resource-type" name="resource_type" value="organization" autocomplete="off" required>
+                </div>
+                <div class="field">
+                  <label for="permission-resource-id">Resource ID</label>
+                  <input id="permission-resource-id" name="resource_id" autocomplete="off" required>
+                </div>
+                <div class="field">
+                  <label for="permission-action">Action</label>
+                  <input id="permission-action" name="action" autocomplete="off" placeholder="org.audit.read">
+                </div>
+                <div class="field">
+                  <label for="permission-name">Permission</label>
+                  <input id="permission-name" name="permission" autocomplete="off" placeholder="manage_members">
+                </div>
+                <button type="submit">Check permission</button>
+              </form>
+              <div id="permission-decision" class="decision">No decision yet.</div>
+              <div id="permission-deny-reasons" class="decision-list"></div>
+              <div id="permission-relationship-paths" class="decision-list"></div>
+              <div id="permission-recent-changes" class="decision-list"></div>
+            </section>
+
+            <section id="audit-panel" data-admin-panel="audit" role="tabpanel" aria-labelledby="audit-tab">
+              <div id="audit-error" class="panel-error" role="alert"></div>
+              <div id="audit-permission-state" class="permission-state" role="status" hidden></div>
+              <form id="audit-filter-form" class="form-grid member-form">
+                <div class="field">
+                  <label for="audit-action">Action</label>
+                  <input id="audit-action" name="action" autocomplete="off" placeholder="memory.read">
+                </div>
+                <div class="field">
+                  <label for="audit-actor-member-id">Actor member ID</label>
+                  <input id="audit-actor-member-id" name="actor_member_id" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="audit-resource-type">Resource type</label>
+                  <input id="audit-resource-type" name="resource_type" autocomplete="off" placeholder="memory">
+                </div>
+                <div class="field">
+                  <label for="audit-resource-id">Resource ID</label>
+                  <input id="audit-resource-id" name="resource_id" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="audit-decision">Decision</label>
+                  <select id="audit-decision" name="decision">
+                    <option value="">Any</option>
+                    <option value="allowed">Allowed</option>
+                    <option value="denied">Denied</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="error">Error</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="audit-created-after">Created after</label>
+                  <input id="audit-created-after" name="created_after" type="datetime-local">
+                </div>
+                <div class="field">
+                  <label for="audit-created-before">Created before</label>
+                  <input id="audit-created-before" name="created_before" type="datetime-local">
+                </div>
+                <button type="submit">Filter audit</button>
+                <button id="audit-export-button" class="secondary" type="button">Export JSONL</button>
+              </form>
+              <div id="audit-empty-state" class="empty-state" hidden>No audit events match the current filters.</div>
+              <div class="table-wrap">
+                <table id="audit-events-table">
+                  <thead>
+                    <tr>
+                      <th>Created</th>
+                      <th>Actor</th>
+                      <th>Action</th>
+                      <th>Resource</th>
+                      <th>Decision</th>
+                    </tr>
+                  </thead>
+                  <tbody id="audit-events-table-body"></tbody>
+                </table>
+              </div>
+              <div id="audit-sensitive-reads" class="decision-list"></div>
+              <div id="audit-high-risk-tools" class="decision-list"></div>
+            </section>
+
+            <section id="usage-panel" data-admin-panel="usage" role="tabpanel" aria-labelledby="usage-tab">
+              <div id="usage-error" class="panel-error" role="alert"></div>
+              <div id="usage-permission-state" class="permission-state" role="status" hidden></div>
+              <div id="usage-summary" class="decision">No usage loaded.</div>
+              <div id="usage-empty-state" class="empty-state" hidden>No usage loaded.</div>
+              <form id="usage-quota-form" class="form-grid member-form">
+                <div class="field">
+                  <label for="usage-run-count-quota">Run quota</label>
+                  <input id="usage-run-count-quota" name="run_count" type="number" min="0" step="1">
+                </div>
+                <div class="field">
+                  <label for="usage-token-count-quota">Token quota</label>
+                  <input id="usage-token-count-quota" name="token_count" type="number" min="0" step="1">
+                </div>
+                <div class="field">
+                  <label for="usage-tool-call-count-quota">Tool call quota</label>
+                  <input id="usage-tool-call-count-quota" name="tool_call_count" type="number" min="0" step="1">
+                </div>
+                <div class="field">
+                  <label for="usage-backup-size-bytes-quota">Backup bytes quota</label>
+                  <input id="usage-backup-size-bytes-quota" name="backup_size_bytes" type="number" min="0" step="1">
+                </div>
+                <button type="submit">Save quotas</button>
+              </form>
+            </section>
+
+            <section id="chat-panel" data-admin-panel="chat" role="tabpanel" aria-labelledby="chat-tab">
+              <div id="chat-error" class="panel-error" role="alert"></div>
+              <form id="chat-submit-form" class="form-grid chat-form">
+                <div class="field">
+                  <label for="chat-team-id">Team ID</label>
+                  <input id="chat-team-id" name="team_id" autocomplete="off" required>
+                </div>
+                <div class="field">
+                  <label for="chat-project-id">Project ID</label>
+                  <input id="chat-project-id" name="project_id" autocomplete="off" required>
+                </div>
+                <div class="field">
+                  <label for="chat-member-id">Member ID</label>
+                  <input id="chat-member-id" name="member_id" autocomplete="off" required>
+                </div>
+                <div class="field wide">
+                  <label for="chat-message">Message</label>
+                  <textarea id="chat-message" name="message" autocomplete="off" required></textarea>
+                </div>
+                <button type="submit">Run chat</button>
+              </form>
+              <div id="chat-run-status" class="decision">No chat run yet.</div>
+              <div id="chat-empty-state" class="empty-state" hidden>No events yet.</div>
+              <ul id="chat-event-list" class="event-list"></ul>
+            </section>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const SESSION_KEY = "hermesTeamSession";
+      const AUTH_AUTHORIZE_PATH = "/auth/oidc/authorize";
+      const AUTH_CALLBACK_PATH = "/auth/oidc/callback";
+      const ORGANIZATIONS_PATH = "/api/organizations";
+      const AUTHZ_EXPLAIN_PATH = "/api/authz/explain";
+      const AUDIT_EVENTS_PATH = "/api/audit/events";
+      const AUDIT_EXPORT_PATH = "/api/audit/export";
+      const AUDIT_SENSITIVE_READS_PATH = "/api/audit/sensitive-reads";
+      const AUDIT_HIGH_RISK_TOOLS_PATH = "/api/audit/high-risk-tools";
+      const CHAT_RUNS_PATH = "/api/chat/runs";
+      const LOCALE_KEY = "hermesTeamLocale";
+      const I18N_MESSAGES = {
+        en: {
+          skip_to_main: "Skip to main content",
+          signed_out: "Signed out",
+          sign_out: "Sign out",
+          team_workspace_access: "Team workspace access",
+          login_summary: "Sign in with Casdoor to open the local Team Cloud console and select an organization context.",
+          sign_in: "Sign in with Casdoor",
+          team_console: "Team Console",
+          team_console_summary: "Organization-scoped administration shell.",
+          refresh_organizations: "Refresh organizations",
+          permission_denied: "Access denied for the selected organization or resource.",
+          empty_teams: "No teams available.",
+        },
+        "zh-CN": {
+          skip_to_main: "跳到主要内容",
+          signed_out: "已退出登录",
+          sign_out: "退出登录",
+          team_workspace_access: "团队工作区访问",
+          login_summary: "使用 Casdoor 登录本地 Team Cloud 控制台，并选择组织上下文。",
+          sign_in: "使用 Casdoor 登录",
+          team_console: "团队控制台",
+          team_console_summary: "按组织范围管理的控制台。",
+          refresh_organizations: "刷新组织",
+          permission_denied: "当前组织或资源无访问权限。",
+          empty_teams: "暂无团队。",
+        },
+      };
+      const ROLE_DEFINITIONS = [
+        {
+          id: "owner",
+          label: "Owner",
+          purpose: "Organization ownership and break-glass accountability.",
+          permissions: "view, manage, manage_members, read_audit, export, delete",
+        },
+        {
+          id: "admin",
+          label: "Admin",
+          purpose: "Day-to-day organization and team administration.",
+          permissions: "view, manage, manage_members, read_audit",
+        },
+        {
+          id: "security_admin",
+          label: "Security admin",
+          purpose: "Audit and policy operations without ownership transfer.",
+          permissions: "view, read_audit, break_glass_approve",
+        },
+        {
+          id: "member",
+          label: "Member",
+          purpose: "Standard team workspace access.",
+          permissions: "view, project participation, memory access through policy",
+        },
+        {
+          id: "guest",
+          label: "Guest",
+          purpose: "Limited workspace visibility.",
+          permissions: "view only where explicitly related",
+        },
+      ];
+
+      const params = new URLSearchParams(window.location.search);
+      const apiBaseUrl = (
+        params.get("api") ||
+        sessionStorage.getItem("hermesTeamApiBaseUrl") ||
+        "http://localhost:8780"
+      ).replace(/\/$/, "");
+
+      const callbackUrl = new URL("/auth/callback", window.location.origin).toString();
+
+      const loginView = document.querySelector('[data-view="login"]');
+      const appView = document.querySelector('[data-view="app"]');
+      const loginButton = document.getElementById("login-button");
+      const logoutButton = document.getElementById("logout-button");
+      const refreshButton = document.getElementById("refresh-organizations");
+      const callbackStatus = document.getElementById("callback-status");
+      const shellError = document.getElementById("shell-error");
+      const organizationSwitcher = document.getElementById("organization-switcher");
+      const organizationList = document.getElementById("organization-list");
+      const apiBaseLabel = document.getElementById("api-base-label");
+      const redirectUriLabel = document.getElementById("redirect-uri-label");
+      const createTeamForm = document.getElementById("create-team-form");
+      const inviteMemberForm = document.getElementById("invite-member-form");
+      const permissionExplainForm = document.getElementById("permission-explain-form");
+      const auditFilterForm = document.getElementById("audit-filter-form");
+      const auditExportButton = document.getElementById("audit-export-button");
+      const usageQuotaForm = document.getElementById("usage-quota-form");
+      const chatSubmitForm = document.getElementById("chat-submit-form");
+      const membersBulkDisableButton = document.getElementById("members-bulk-disable");
+      const membersBulkConfirm = document.getElementById("members-bulk-confirm");
+      const membersBulkConfirmCount = document.getElementById("members-bulk-confirm-count");
+      const membersBulkConfirmCancel = document.getElementById("members-bulk-confirm-cancel");
+      const membersBulkConfirmApply = document.getElementById("members-bulk-confirm-apply");
+      const teamList = document.getElementById("team-list");
+      const memberList = document.getElementById("member-list");
+      const rolesTableBody = document.getElementById("roles-table-body");
+      const permissionDecision = document.getElementById("permission-decision");
+      const permissionDenyReasons = document.getElementById("permission-deny-reasons");
+      const permissionRelationshipPaths = document.getElementById("permission-relationship-paths");
+      const permissionRecentChanges = document.getElementById("permission-recent-changes");
+      const auditEventsTableBody = document.getElementById("audit-events-table-body");
+      const auditSensitiveReads = document.getElementById("audit-sensitive-reads");
+      const auditHighRiskTools = document.getElementById("audit-high-risk-tools");
+      const usageSummary = document.getElementById("usage-summary");
+      const chatRunStatus = document.getElementById("chat-run-status");
+      const chatEventList = document.getElementById("chat-event-list");
+      const languageButtons = document.querySelectorAll("[data-locale]");
+      const selectedMemberIds = new Set();
+
+      apiBaseLabel.textContent = apiBaseUrl;
+      redirectUriLabel.textContent = callbackUrl;
+      sessionStorage.setItem("hermesTeamApiBaseUrl", apiBaseUrl);
+
+      function teamsPath(orgId) {
+        return `/api/organizations/${orgId}/teams`;
+      }
+
+      function membersPath(orgId) {
+        return `/api/organizations/${orgId}/members`;
+      }
+
+      function memberInvitePath(orgId) {
+        return `/api/organizations/${orgId}/members/invite`;
+      }
+
+      function memberDisablePath(orgId, memberId) {
+        return `/api/organizations/${orgId}/members/${memberId}/disable`;
+      }
+
+      function chatRunEventsPath(runId) {
+        return `/api/chat/runs/${runId}/events`;
+      }
+
+      function usageSummaryPath(orgId) {
+        return `/api/usage/orgs/${orgId}/summary`;
+      }
+
+      function usageQuotasPath(orgId) {
+        return `/api/usage/orgs/${orgId}/quotas`;
+      }
+
+      function auditSearchParams() {
+        const form = new FormData(auditFilterForm);
+        return {
+          org_id: selectedOrgId(),
+          action: form.get("action"),
+          actor_member_id: form.get("actor_member_id"),
+          resource_type: form.get("resource_type"),
+          resource_id: form.get("resource_id"),
+          decision: form.get("decision"),
+          created_after: form.get("created_after"),
+          created_before: form.get("created_before"),
+        };
+      }
+
+      function readSession() {
+        try {
+          return JSON.parse(sessionStorage.getItem(SESSION_KEY) || "{}");
+        } catch {
+          return {};
+        }
+      }
+
+      function writeSession(patch) {
+        const next = { ...readSession(), ...patch, apiBaseUrl };
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
+        return next;
+      }
+
+      function clearSession() {
+        sessionStorage.removeItem(SESSION_KEY);
+      }
+
+      function showError(message) {
+        shellError.textContent = message;
+        shellError.classList.add("active");
+      }
+
+      function clearError() {
+        shellError.textContent = "";
+        shellError.classList.remove("active");
+      }
+
+      function showPanelError(id, message) {
+        const target = document.getElementById(id);
+        target.textContent = message;
+        target.classList.add("active");
+      }
+
+      function clearPanelError(id) {
+        const target = document.getElementById(id);
+        target.textContent = "";
+        target.classList.remove("active");
+      }
+
+      function renderEmptyState(id, message) {
+        const target = document.getElementById(id);
+        target.textContent = message;
+      }
+
+      function setEmptyState(id, visible, message) {
+        const target = document.getElementById(id);
+        if (message) {
+          renderEmptyState(id, message);
+        }
+        target.hidden = !visible;
+      }
+
+      function permissionStateFromError(error) {
+        const message = error && error.message ? error.message : "";
+        if (error && error.status === 403) {
+          return (I18N_MESSAGES[localStorage.getItem(LOCALE_KEY)] || I18N_MESSAGES.en).permission_denied ||
+            "Access denied for the selected organization or resource.";
+        }
+        if (error && error.status === 401) {
+          return "Sign in again to continue.";
+        }
+        if (message.includes("authorization_unavailable") || message.includes("503")) {
+          return "Authorization is unavailable. Sensitive actions are temporarily blocked.";
+        }
+        return "";
+      }
+
+      function showPermissionState(id, error) {
+        const target = document.getElementById(id);
+        const message = permissionStateFromError(error);
+        target.textContent = message;
+        target.hidden = !message;
+      }
+
+      function clearPermissionState(id) {
+        const target = document.getElementById(id);
+        target.textContent = "";
+        target.hidden = true;
+      }
+
+      function clearAdminPermissionStates() {
+        clearPermissionState("teams-permission-state");
+        clearPermissionState("members-permission-state");
+        clearPermissionState("audit-permission-state");
+        clearPermissionState("usage-permission-state");
+      }
+
+      function setBusy(control, busy) {
+        control.disabled = busy;
+        control.setAttribute("aria-busy", String(busy));
+      }
+
+      function setFormBusy(form, busy) {
+        for (const control of form.querySelectorAll("button, input, select, textarea")) {
+          control.disabled = busy;
+        }
+        form.setAttribute("aria-busy", String(busy));
+      }
+
+      function showView(name) {
+        loginView.classList.toggle("active", name === "login");
+        appView.classList.toggle("active", name === "app");
+        logoutButton.hidden = name !== "app";
+      }
+
+      function applyTranslations(locale) {
+        const messages = I18N_MESSAGES[locale] || I18N_MESSAGES.en;
+        document.documentElement.lang = locale;
+        for (const element of document.querySelectorAll("[data-i18n]")) {
+          const key = element.dataset.i18n;
+          if (messages[key]) {
+            element.textContent = messages[key];
+          }
+        }
+        for (const button of languageButtons) {
+          const active = button.dataset.locale === locale;
+          button.setAttribute("aria-pressed", String(active));
+          if (active) {
+            button.setAttribute("data-i18n-active", "true");
+          } else {
+            button.removeAttribute("data-i18n-active");
+          }
+        }
+      }
+
+      function setLocale(locale) {
+        localStorage.setItem(LOCALE_KEY, locale);
+        applyTranslations(locale);
+      }
+
+      function switchAdminTab(name) {
+        for (const tab of document.querySelectorAll("[data-admin-tab]")) {
+          const active = tab.dataset.adminTab === name;
+          tab.classList.toggle("active", active);
+          tab.setAttribute("aria-selected", String(active));
+          tab.tabIndex = active ? 0 : -1;
+        }
+        for (const panel of document.querySelectorAll("[data-admin-panel]")) {
+          panel.classList.toggle("active", panel.dataset.adminPanel === name);
+        }
+      }
+
+      function handleAdminTabKeydown(event) {
+        const tabs = Array.from(document.querySelectorAll("[data-admin-tab]"));
+        const currentIndex = tabs.indexOf(event.currentTarget);
+        if (currentIndex < 0) {
+          return;
+        }
+        let nextIndex = currentIndex;
+        if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+          nextIndex = (currentIndex + 1) % tabs.length;
+        } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+          nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        } else if (event.key === "Home") {
+          nextIndex = 0;
+        } else if (event.key === "End") {
+          nextIndex = tabs.length - 1;
+        } else {
+          return;
+        }
+        event.preventDefault();
+        const nextTab = tabs[nextIndex];
+        switchAdminTab(nextTab.dataset.adminTab);
+        nextTab.focus();
+      }
+
+      function selectedOrgId() {
+        return organizationSwitcher.value;
+      }
+
+      function renderSession(session) {
+        document.getElementById("session-subject").textContent = session.subject || "-";
+        document.getElementById("session-email").textContent = session.email || "-";
+        document.getElementById("session-name").textContent = session.name || "-";
+        callbackStatus.textContent = session.subject ? "Signed in" : "Signed out";
+      }
+
+      function renderOrganizations(items) {
+        organizationSwitcher.replaceChildren();
+        organizationList.replaceChildren();
+
+        if (!items.length) {
+          organizationSwitcher.append(new Option("No organizations available", ""));
+          const empty = document.createElement("li");
+          empty.textContent = "No organizations available.";
+          organizationList.append(empty);
+          renderTeams([]);
+          renderMembers([]);
+          return;
+        }
+
+        const session = readSession();
+        const preferredOrgId = session.currentOrgId;
+        for (const item of items) {
+          const id = item.id || item.slug || "";
+          const name = item.name || item.slug || id;
+          organizationSwitcher.append(new Option(name, id));
+
+          const row = document.createElement("li");
+          const title = document.createElement("span");
+          const slug = document.createElement("span");
+          title.textContent = name;
+          slug.textContent = item.slug || id;
+          slug.className = "tag";
+          row.append(title, slug);
+          organizationList.append(row);
+        }
+
+        if (preferredOrgId && items.some((item) => (item.id || item.slug) === preferredOrgId)) {
+          organizationSwitcher.value = preferredOrgId;
+        }
+        writeSession({ currentOrgId: selectedOrgId() });
+      }
+
+      function renderTeams(items) {
+        teamList.replaceChildren();
+        setEmptyState("teams-empty-state", !items.length, "No teams available.");
+        if (!items.length) {
+          return;
+        }
+
+        for (const item of items) {
+          const row = document.createElement("li");
+          const main = document.createElement("span");
+          const status = document.createElement("span");
+          main.className = "entity-main";
+          main.innerHTML = "";
+          const name = document.createElement("strong");
+          const slug = document.createElement("span");
+          name.textContent = item.name || item.slug || item.id;
+          slug.textContent = item.slug || item.id;
+          main.append(name, slug);
+          status.className = "tag";
+          status.textContent = item.status || "active";
+          row.append(main, status);
+          teamList.append(row);
+        }
+      }
+
+      function renderMembers(items) {
+        memberList.replaceChildren();
+        selectedMemberIds.clear();
+        closeMembersBulkConfirm();
+        setEmptyState("members-empty-state", !items.length, "No members available.");
+        if (!items.length) {
+          updateMemberBulkControls();
+          return;
+        }
+
+        for (const item of items) {
+          const row = document.createElement("li");
+          const selector = document.createElement("input");
+          const main = document.createElement("span");
+          const role = document.createElement("span");
+          const action = document.createElement("button");
+          const name = document.createElement("strong");
+          const email = document.createElement("span");
+          const memberId = item.id || "";
+          selector.className = "member-select";
+          selector.type = "checkbox";
+          selector.value = memberId;
+          selector.disabled = !memberId || item.status === "suspended";
+          selector.setAttribute("aria-label", `Select ${item.display_name || item.email || item.user_id || memberId}`);
+          selector.addEventListener("change", () => {
+            if (selector.checked) {
+              selectedMemberIds.add(memberId);
+            } else {
+              selectedMemberIds.delete(memberId);
+            }
+            updateMemberBulkControls();
+          });
+          main.className = "entity-main";
+          name.textContent = item.display_name || item.email || item.user_id;
+          email.textContent = `${item.email || item.user_id} · ${item.status || "unknown"}`;
+          role.className = item.status === "suspended" ? "tag danger" : "tag warning";
+          role.textContent = item.role || "member";
+          action.className = "danger";
+          action.type = "button";
+          action.textContent = "Disable";
+          action.disabled = item.status === "suspended";
+          action.addEventListener("click", () => disableMember(item.id));
+          main.append(name, email);
+          row.append(selector, main, role, action);
+          memberList.append(row);
+        }
+        updateMemberBulkControls();
+      }
+
+      function updateMemberBulkControls() {
+        const count = selectedMemberIds.size;
+        membersBulkDisableButton.disabled = count === 0;
+        membersBulkDisableButton.textContent = count
+          ? `Disable selected (${count})`
+          : "Disable selected";
+      }
+
+      function openMembersBulkConfirm() {
+        if (!selectedMemberIds.size) {
+          return;
+        }
+        membersBulkConfirmCount.textContent = String(selectedMemberIds.size);
+        membersBulkConfirm.hidden = false;
+        membersBulkConfirmApply.focus();
+      }
+
+      function closeMembersBulkConfirm() {
+        membersBulkConfirm.hidden = true;
+        membersBulkConfirmCount.textContent = "0";
+      }
+
+      async function bulkDisableMembers() {
+        const orgId = selectedOrgId();
+        const memberIds = Array.from(selectedMemberIds);
+        if (!orgId || !memberIds.length) {
+          closeMembersBulkConfirm();
+          return;
+        }
+        clearPanelError("members-error");
+        clearPermissionState("members-permission-state");
+        setBusy(membersBulkConfirmApply, true);
+        try {
+          await Promise.all(
+            memberIds.map((memberId) => apiRequest(memberDisablePath(orgId, memberId), { method: "PATCH" }))
+          );
+          closeMembersBulkConfirm();
+          await loadMembers();
+        } catch (error) {
+          showPermissionState("members-permission-state", error);
+          showPanelError("members-error", `Selected members could not be disabled: ${error.message}`);
+        } finally {
+          setBusy(membersBulkConfirmApply, false);
+        }
+      }
+
+      function renderRoles() {
+        rolesTableBody.replaceChildren();
+        for (const role of ROLE_DEFINITIONS) {
+          const row = document.createElement("tr");
+          const label = document.createElement("td");
+          const purpose = document.createElement("td");
+          const permissions = document.createElement("td");
+          label.textContent = role.label;
+          purpose.textContent = role.purpose;
+          permissions.textContent = role.permissions;
+          row.append(label, purpose, permissions);
+          rolesTableBody.append(row);
+        }
+      }
+
+      function renderPermissionDecision(payload) {
+        permissionDecision.replaceChildren();
+        permissionDecision.classList.remove("allowed", "denied");
+        if (!payload) {
+          permissionDecision.textContent = "No decision yet.";
+          renderPermissionList(permissionDenyReasons, "Deny reasons", []);
+          renderPermissionList(permissionRelationshipPaths, "Relationship paths", []);
+          renderPermissionList(permissionRecentChanges, "Recent changes", []);
+          return;
+        }
+
+        permissionDecision.classList.add(payload.allowed ? "allowed" : "denied");
+        const details = document.createElement("dl");
+        const entries = [
+          ["Decision", payload.allowed ? "Allowed" : "Denied"],
+          ["Reason", payload.reason],
+          ["Subject", payload.subject],
+          ["Resource", payload.resource],
+          ["Permission", payload.permission],
+          ["Cache key", payload.cache_key],
+        ];
+        for (const [label, value] of entries) {
+          const term = document.createElement("dt");
+          const description = document.createElement("dd");
+          term.textContent = label;
+          description.textContent = value || "-";
+          details.append(term, description);
+        }
+        permissionDecision.append(details);
+        renderPermissionList(permissionDenyReasons, "Deny reasons", payload.deny_reasons || []);
+        renderPermissionList(
+          permissionRelationshipPaths,
+          "Relationship paths",
+          payload.relationship_paths || [],
+          (item) => `${item.status} ${item.operation} ${item.relationship}`
+        );
+        renderPermissionList(
+          permissionRecentChanges,
+          "Recent changes",
+          payload.recent_relationship_changes || [],
+          (item) => `${item.status} ${item.operation} ${item.relationship}`
+        );
+      }
+
+      function renderPermissionList(container, title, items, formatter = null) {
+        container.replaceChildren();
+        const heading = document.createElement("h4");
+        heading.textContent = title;
+        const list = document.createElement("ul");
+        if (!items.length) {
+          const empty = document.createElement("li");
+          empty.textContent = "None";
+          list.append(empty);
+        } else {
+          for (const item of items) {
+            const row = document.createElement("li");
+            row.textContent = formatter ? formatter(item) : String(item);
+            list.append(row);
+          }
+        }
+        container.append(heading, list);
+      }
+
+      function renderAuditEvents(items) {
+        auditEventsTableBody.replaceChildren();
+        setEmptyState("audit-empty-state", !items.length, "No audit events match the current filters.");
+        if (!items.length) {
+          return;
+        }
+
+        for (const item of items) {
+          const row = document.createElement("tr");
+          const created = document.createElement("td");
+          const actor = document.createElement("td");
+          const action = document.createElement("td");
+          const resource = document.createElement("td");
+          const decision = document.createElement("td");
+          created.textContent = item.created_at || "-";
+          actor.textContent = item.actor_member_id || item.actor_type || "-";
+          action.textContent = item.action || "-";
+          resource.textContent = `${item.resource_type || "-"}:${item.resource_id || "-"}`;
+          decision.textContent = item.decision || "-";
+          row.append(created, actor, action, resource, decision);
+          auditEventsTableBody.append(row);
+        }
+      }
+
+      function renderAuditSummary(container, title, items) {
+        renderPermissionList(
+          container,
+          title,
+          items,
+          (item) => `${item.created_at || "-"} ${item.action || "-"} ${item.resource_type || "-"}:${item.resource_id || "-"} ${item.decision || "-"}`
+        );
+      }
+
+      function renderUsageSummary(payload) {
+        usageSummary.replaceChildren();
+        usageSummary.classList.remove("allowed", "denied");
+        setEmptyState("usage-empty-state", !payload, "No usage loaded.");
+        if (!payload) {
+          usageSummary.textContent = "No usage loaded.";
+          return;
+        }
+
+        usageSummary.classList.add(payload.quota_status === "over_quota" ? "denied" : "allowed");
+        const details = document.createElement("dl");
+        const usage = payload.usage || {};
+        const quotas = payload.quotas || {};
+        const entries = [
+          ["Runs", `${usage.run_count || 0} / ${quotas.run_count ?? "unlimited"}`],
+          ["Messages", String(usage.message_count || 0)],
+          ["Tokens", `${usage.token_count || 0} / ${quotas.token_count ?? "unlimited"}`],
+          ["Tool calls", `${usage.tool_call_count || 0} / ${quotas.tool_call_count ?? "unlimited"}`],
+          ["Backup bytes", `${usage.backup_size_bytes || 0} / ${quotas.backup_size_bytes ?? "unlimited"}`],
+          ["Quota status", payload.quota_status || "unknown"],
+        ];
+        for (const [label, value] of entries) {
+          const term = document.createElement("dt");
+          const description = document.createElement("dd");
+          term.textContent = label;
+          description.textContent = value;
+          details.append(term, description);
+        }
+        usageSummary.append(details);
+      }
+
+      function populateUsageQuotaForm(payload) {
+        const quotas = (payload && payload.quotas) || {};
+        for (const metric of ["run_count", "token_count", "tool_call_count", "backup_size_bytes"]) {
+          const control = usageQuotaForm.elements[metric];
+          control.value = quotas[metric] === null || quotas[metric] === undefined ? "" : quotas[metric];
+        }
+      }
+
+      function renderChatRunStatus(run) {
+        chatRunStatus.replaceChildren();
+        chatRunStatus.classList.remove("allowed", "denied");
+        if (!run) {
+          chatRunStatus.textContent = "No chat run yet.";
+          return;
+        }
+
+        chatRunStatus.classList.add(run.status === "failed" ? "denied" : "allowed");
+        const details = document.createElement("dl");
+        const entries = [
+          ["Run", run.id],
+          ["Status", run.status],
+          ["Organization", run.org_id],
+          ["Team", run.team_id],
+          ["Project", run.project_id],
+          ["Member", run.member_id],
+        ];
+        for (const [label, value] of entries) {
+          const term = document.createElement("dt");
+          const description = document.createElement("dd");
+          term.textContent = label;
+          description.textContent = value || "-";
+          details.append(term, description);
+        }
+        chatRunStatus.append(details);
+      }
+
+      function renderChatEvents(items) {
+        chatEventList.replaceChildren();
+        setEmptyState("chat-empty-state", !items.length, "No events yet.");
+        if (!items.length) {
+          return;
+        }
+
+        for (const item of items) {
+          const row = document.createElement("li");
+          const title = document.createElement("strong");
+          const body = document.createElement("code");
+          title.textContent = `${item.sequence || "-"} · ${item.type || "event"}`;
+          body.textContent = JSON.stringify(item.payload || {}, null, 2);
+          row.append(title, body);
+          chatEventList.append(row);
+        }
+      }
+
+      async function apiRequest(path, options = {}) {
+        const url = new URL(path, apiBaseUrl);
+        if (options.searchParams) {
+          for (const [key, value] of Object.entries(options.searchParams)) {
+            if (value !== undefined && value !== null && value !== "") {
+              url.searchParams.set(key, value);
+            }
+          }
+        }
+        const init = {
+          credentials: "include",
+          method: options.method || "GET",
+        };
+        if (options.body) {
+          init.headers = { "Content-Type": "application/json" };
+          init.body = JSON.stringify(options.body);
+        }
+        const response = await fetch(url.toString(), init);
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          const detail = payload.detail || payload.error || `${response.status} ${response.statusText}`.trim();
+          const error = new Error(String(detail));
+          error.status = response.status;
+          error.payload = payload;
+          throw error;
+        }
+        return response.json();
+      }
+
+      async function apiGet(path, searchParams) {
+        return apiRequest(path, { searchParams });
+      }
+
+      async function apiText(path, searchParams) {
+        const url = new URL(path, apiBaseUrl);
+        for (const [key, value] of Object.entries(searchParams || {})) {
+          if (value !== undefined && value !== null && value !== "") {
+            url.searchParams.set(key, value);
+          }
+        }
+        const response = await fetch(url.toString(), {
+          credentials: "include",
+          method: "GET",
+        });
+        if (!response.ok) {
+          const message = await response.text().catch(() => `${response.status} ${response.statusText}`.trim());
+          const error = new Error(message || `${response.status} ${response.statusText}`.trim());
+          error.status = response.status;
+          throw error;
+        }
+        return response.text();
+      }
+
+      async function startLogin() {
+        clearError();
+        setBusy(loginButton, true);
+        try {
+          const authorize = await apiGet(AUTH_AUTHORIZE_PATH, {
+            redirect_uri: callbackUrl,
+          });
+          writeSession({
+            loginStartedAt: new Date().toISOString(),
+            state: authorize.state,
+            nonce: authorize.nonce,
+            redirectUri: callbackUrl,
+          });
+          window.location.assign(authorize.authorization_url);
+        } catch (error) {
+          showError(`Login could not start: ${error.message}`);
+          setBusy(loginButton, false);
+        }
+      }
+
+      async function finishLogin() {
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("code");
+        const returnedState = url.searchParams.get("state");
+        if (!code || !returnedState) {
+          return false;
+        }
+
+        clearError();
+        callbackStatus.textContent = "Completing sign in";
+        const pending = readSession();
+        if (pending.state && pending.state !== returnedState) {
+          showError("Login state mismatch.");
+          return true;
+        }
+
+        try {
+          const callback = await apiGet(AUTH_CALLBACK_PATH, {
+            code,
+            state: returnedState,
+            redirect_uri: pending.redirectUri || callbackUrl,
+            nonce: pending.nonce,
+          });
+          const session = writeSession({
+            subject: callback.subject,
+            email: callback.email,
+            name: callback.name,
+            state: callback.state,
+            signedInAt: new Date().toISOString(),
+          });
+          window.history.replaceState({}, document.title, "/");
+          renderSession(session);
+          showView("app");
+          await loadOrganizations();
+          return true;
+        } catch (error) {
+          showError(`Login callback failed: ${error.message}`);
+          callbackStatus.textContent = "Sign in failed";
+          return true;
+        }
+      }
+
+      async function loadOrganizations() {
+        clearError();
+        setBusy(refreshButton, true);
+        try {
+          const payload = await apiGet(ORGANIZATIONS_PATH);
+          renderOrganizations(payload.items || []);
+          await loadAdminData();
+        } catch (error) {
+          renderOrganizations([]);
+          showError(`Organizations could not be loaded: ${error.message}`);
+        } finally {
+          setBusy(refreshButton, false);
+        }
+      }
+
+      async function loadAdminData() {
+        const orgId = selectedOrgId();
+        renderRoles();
+        if (!orgId) {
+          clearAdminPermissionStates();
+          renderTeams([]);
+          renderMembers([]);
+          renderAuditEvents([]);
+          renderAuditSummary(auditSensitiveReads, "Sensitive reads", []);
+          renderAuditSummary(auditHighRiskTools, "High-risk tools", []);
+          renderUsageSummary(null);
+          populateUsageQuotaForm(null);
+          return;
+        }
+        writeSession({ currentOrgId: orgId });
+        await Promise.all([loadTeams(), loadMembers(), loadAuditData(), loadUsageData()]);
+      }
+
+      async function loadTeams() {
+        const orgId = selectedOrgId();
+        clearPanelError("teams-error");
+        if (!orgId) {
+          clearPermissionState("teams-permission-state");
+          renderTeams([]);
+          return;
+        }
+        try {
+          const payload = await apiGet(teamsPath(orgId));
+          clearPermissionState("teams-permission-state");
+          renderTeams(payload.items || []);
+        } catch (error) {
+          renderTeams([]);
+          showPermissionState("teams-permission-state", error);
+          showPanelError("teams-error", `Teams could not be loaded: ${error.message}`);
+        }
+      }
+
+      async function loadMembers() {
+        const orgId = selectedOrgId();
+        clearPanelError("members-error");
+        if (!orgId) {
+          clearPermissionState("members-permission-state");
+          renderMembers([]);
+          return;
+        }
+        try {
+          const payload = await apiGet(membersPath(orgId));
+          clearPermissionState("members-permission-state");
+          renderMembers(payload.items || []);
+        } catch (error) {
+          renderMembers([]);
+          showPermissionState("members-permission-state", error);
+          showPanelError("members-error", `Members could not be loaded: ${error.message}`);
+        }
+      }
+
+      async function createTeam(event) {
+        event.preventDefault();
+        const orgId = selectedOrgId();
+        if (!orgId) {
+          showPanelError("teams-error", "Select an organization before creating a team.");
+          return;
+        }
+        const form = new FormData(createTeamForm);
+        clearPanelError("teams-error");
+        setFormBusy(createTeamForm, true);
+        try {
+          await apiRequest(teamsPath(orgId), {
+            method: "POST",
+            body: {
+              slug: form.get("slug"),
+              name: form.get("name"),
+            },
+          });
+          clearPermissionState("teams-permission-state");
+          createTeamForm.reset();
+          await loadTeams();
+        } catch (error) {
+          showPermissionState("teams-permission-state", error);
+          showPanelError("teams-error", `Team could not be created: ${error.message}`);
+        } finally {
+          setFormBusy(createTeamForm, false);
+        }
+      }
+
+      async function inviteMember(event) {
+        event.preventDefault();
+        const orgId = selectedOrgId();
+        if (!orgId) {
+          showPanelError("members-error", "Select an organization before inviting a member.");
+          return;
+        }
+        const form = new FormData(inviteMemberForm);
+        clearPanelError("members-error");
+        setFormBusy(inviteMemberForm, true);
+        try {
+          await apiRequest(memberInvitePath(orgId), {
+            method: "POST",
+            body: {
+              email: form.get("email"),
+              display_name: form.get("display_name"),
+              user_id: form.get("user_id"),
+              role: form.get("role"),
+            },
+          });
+          clearPermissionState("members-permission-state");
+          inviteMemberForm.reset();
+          await loadMembers();
+        } catch (error) {
+          showPermissionState("members-permission-state", error);
+          showPanelError("members-error", `Member could not be invited: ${error.message}`);
+        } finally {
+          setFormBusy(inviteMemberForm, false);
+        }
+      }
+
+      async function disableMember(memberId) {
+        const orgId = selectedOrgId();
+        if (!orgId || !memberId) {
+          return;
+        }
+        clearPanelError("members-error");
+        clearPermissionState("members-permission-state");
+        try {
+          await apiRequest(memberDisablePath(orgId, memberId), { method: "PATCH" });
+          await loadMembers();
+        } catch (error) {
+          showPermissionState("members-permission-state", error);
+          showPanelError("members-error", `Member could not be disabled: ${error.message}`);
+        }
+      }
+
+      async function explainPermission(event) {
+        event.preventDefault();
+        const form = new FormData(permissionExplainForm);
+        const searchParams = {
+          subject_type: form.get("subject_type"),
+          subject_id: form.get("subject_id"),
+          resource_type: form.get("resource_type"),
+          resource_id: form.get("resource_id"),
+        };
+        const action = String(form.get("action") || "").trim();
+        const permission = String(form.get("permission") || "").trim();
+        if (action) {
+          searchParams.action = action;
+        }
+        if (permission) {
+          searchParams.permission = permission;
+        }
+        if (!action && !permission) {
+          showPanelError("permission-error", "Enter an action or a permission.");
+          return;
+        }
+
+        clearPanelError("permission-error");
+        setFormBusy(permissionExplainForm, true);
+        try {
+          const payload = await apiGet(AUTHZ_EXPLAIN_PATH, searchParams);
+          renderPermissionDecision(payload);
+        } catch (error) {
+          renderPermissionDecision(null);
+          showPanelError("permission-error", `Permission check failed: ${error.message}`);
+        } finally {
+          setFormBusy(permissionExplainForm, false);
+        }
+      }
+
+      async function loadAuditData(event = null) {
+        if (event) {
+          event.preventDefault();
+        }
+        const orgId = selectedOrgId();
+        if (!orgId) {
+          clearPermissionState("audit-permission-state");
+          showPanelError("audit-error", "Select an organization before filtering audit.");
+          return;
+        }
+        clearPanelError("audit-error");
+        setFormBusy(auditFilterForm, true);
+        try {
+          const searchParams = auditSearchParams();
+          const [events, sensitiveReads, highRiskTools] = await Promise.all([
+            apiGet(AUDIT_EVENTS_PATH, searchParams),
+            apiGet(AUDIT_SENSITIVE_READS_PATH, { org_id: orgId }),
+            apiGet(AUDIT_HIGH_RISK_TOOLS_PATH, { org_id: orgId }),
+          ]);
+          clearPermissionState("audit-permission-state");
+          renderAuditEvents(events.items || []);
+          renderAuditSummary(auditSensitiveReads, "Sensitive reads", sensitiveReads.items || []);
+          renderAuditSummary(auditHighRiskTools, "High-risk tools", highRiskTools.items || []);
+        } catch (error) {
+          renderAuditEvents([]);
+          renderAuditSummary(auditSensitiveReads, "Sensitive reads", []);
+          renderAuditSummary(auditHighRiskTools, "High-risk tools", []);
+          showPermissionState("audit-permission-state", error);
+          showPanelError("audit-error", `Audit data could not be loaded: ${error.message}`);
+        } finally {
+          setFormBusy(auditFilterForm, false);
+        }
+      }
+
+      async function exportAuditEvents() {
+        const orgId = selectedOrgId();
+        if (!orgId) {
+          showPanelError("audit-error", "Select an organization before exporting audit.");
+          return;
+        }
+        clearPanelError("audit-error");
+        setBusy(auditExportButton, true);
+        try {
+          const content = await apiText(AUDIT_EXPORT_PATH, auditSearchParams());
+          clearPermissionState("audit-permission-state");
+          const blob = new Blob([content], { type: "application/x-ndjson" });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `audit-${orgId}.jsonl`;
+          document.body.append(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          showPermissionState("audit-permission-state", error);
+          showPanelError("audit-error", `Audit export failed: ${error.message}`);
+        } finally {
+          setBusy(auditExportButton, false);
+        }
+      }
+
+      async function loadUsageData() {
+        const orgId = selectedOrgId();
+        clearPanelError("usage-error");
+        if (!orgId) {
+          clearPermissionState("usage-permission-state");
+          renderUsageSummary(null);
+          populateUsageQuotaForm(null);
+          return;
+        }
+        try {
+          const payload = await apiGet(usageSummaryPath(orgId));
+          clearPermissionState("usage-permission-state");
+          renderUsageSummary(payload);
+          populateUsageQuotaForm(payload);
+        } catch (error) {
+          renderUsageSummary(null);
+          populateUsageQuotaForm(null);
+          showPermissionState("usage-permission-state", error);
+          showPanelError("usage-error", `Usage data could not be loaded: ${error.message}`);
+        }
+      }
+
+      async function saveUsageQuotas(event) {
+        event.preventDefault();
+        const orgId = selectedOrgId();
+        if (!orgId) {
+          showPanelError("usage-error", "Select an organization before saving quotas.");
+          return;
+        }
+        const form = new FormData(usageQuotaForm);
+        const body = {};
+        for (const metric of ["run_count", "token_count", "tool_call_count", "backup_size_bytes"]) {
+          const value = String(form.get(metric) || "").trim();
+          if (value) {
+            body[metric] = Number(value);
+          }
+        }
+        clearPanelError("usage-error");
+        setFormBusy(usageQuotaForm, true);
+        try {
+          await apiRequest(usageQuotasPath(orgId), {
+            method: "PUT",
+            body,
+          });
+          clearPermissionState("usage-permission-state");
+          await loadUsageData();
+        } catch (error) {
+          showPermissionState("usage-permission-state", error);
+          showPanelError("usage-error", `Usage quotas could not be saved: ${error.message}`);
+        } finally {
+          setFormBusy(usageQuotaForm, false);
+        }
+      }
+
+      async function loadChatRunEvents(runId) {
+        if (!runId) {
+          renderChatEvents([]);
+          return;
+        }
+        const payload = await apiGet(chatRunEventsPath(runId));
+        renderChatEvents(payload.items || []);
+      }
+
+      async function submitChatRun(event) {
+        event.preventDefault();
+        const orgId = selectedOrgId();
+        if (!orgId) {
+          showPanelError("chat-error", "Select an organization before running chat.");
+          return;
+        }
+        const form = new FormData(chatSubmitForm);
+        clearPanelError("chat-error");
+        setFormBusy(chatSubmitForm, true);
+        try {
+          const run = await apiRequest(CHAT_RUNS_PATH, {
+            method: "POST",
+            body: {
+              org_id: orgId,
+              team_id: form.get("team_id"),
+              project_id: form.get("project_id"),
+              member_id: form.get("member_id"),
+              message: form.get("message"),
+            },
+          });
+          writeSession({ currentChatRunId: run.id });
+          renderChatRunStatus(run);
+          renderChatEvents(run.events || []);
+          await loadChatRunEvents(run.id);
+        } catch (error) {
+          renderChatRunStatus(null);
+          renderChatEvents([]);
+          showPanelError("chat-error", `Chat run failed: ${error.message}`);
+        } finally {
+          setFormBusy(chatSubmitForm, false);
+        }
+      }
+
+      function signOut() {
+        clearSession();
+        renderSession({});
+        renderOrganizations([]);
+        renderRoles();
+        renderPermissionDecision(null);
+        clearAdminPermissionStates();
+        renderAuditEvents([]);
+        renderAuditSummary(auditSensitiveReads, "Sensitive reads", []);
+        renderAuditSummary(auditHighRiskTools, "High-risk tools", []);
+        renderUsageSummary(null);
+        populateUsageQuotaForm(null);
+        renderChatRunStatus(null);
+        renderChatEvents([]);
+        showView("login");
+      }
+
+      loginButton.addEventListener("click", startLogin);
+      logoutButton.addEventListener("click", signOut);
+      refreshButton.addEventListener("click", loadOrganizations);
+      createTeamForm.addEventListener("submit", createTeam);
+      inviteMemberForm.addEventListener("submit", inviteMember);
+      permissionExplainForm.addEventListener("submit", explainPermission);
+      auditFilterForm.addEventListener("submit", loadAuditData);
+      auditExportButton.addEventListener("click", exportAuditEvents);
+      usageQuotaForm.addEventListener("submit", saveUsageQuotas);
+      chatSubmitForm.addEventListener("submit", submitChatRun);
+      membersBulkDisableButton.addEventListener("click", openMembersBulkConfirm);
+      membersBulkConfirmCancel.addEventListener("click", closeMembersBulkConfirm);
+      membersBulkConfirmApply.addEventListener("click", bulkDisableMembers);
+      organizationSwitcher.addEventListener("change", loadAdminData);
+      for (const tab of document.querySelectorAll("[data-admin-tab]")) {
+        tab.addEventListener("click", () => switchAdminTab(tab.dataset.adminTab));
+        tab.addEventListener("keydown", handleAdminTabKeydown);
+      }
+      for (const button of languageButtons) {
+        button.addEventListener("click", () => setLocale(button.dataset.locale));
+      }
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !membersBulkConfirm.hidden) {
+          closeMembersBulkConfirm();
+        }
+      });
+      applyTranslations(localStorage.getItem(LOCALE_KEY) || "en");
+
+      (async function boot() {
+        logoutButton.hidden = true;
+        renderRoles();
+        renderPermissionDecision(null);
+        renderAuditEvents([]);
+        renderAuditSummary(auditSensitiveReads, "Sensitive reads", []);
+        renderAuditSummary(auditHighRiskTools, "High-risk tools", []);
+        renderUsageSummary(null);
+        populateUsageQuotaForm(null);
+        renderChatRunStatus(null);
+        renderChatEvents([]);
+        const consumedCallback = await finishLogin();
+        if (consumedCallback) {
+          return;
+        }
+
+        const session = readSession();
+        renderSession(session);
+        if (session.subject) {
+          showView("app");
+          await loadOrganizations();
+        } else {
+          showView("login");
+        }
+      })();
+    </script>
+  </body>
+</html>
