@@ -5,13 +5,11 @@ from unittest.mock import patch
 
 
 class RecordingMemoryProvider:
+    name = "recording"
+
     def __init__(self):
         self.init_kwargs = None
         self.init_session_id = None
-
-    @property
-    def name(self):
-        return "recording"
 
     def is_available(self):
         return True
@@ -22,6 +20,9 @@ class RecordingMemoryProvider:
 
     def get_tool_schemas(self):
         return []
+
+    def shutdown(self):
+        pass
 
 
 def test_blank_memory_provider_does_not_auto_enable_honcho():
@@ -173,3 +174,37 @@ def test_aiagent_auto_activates_team_cloud_memory_provider_for_cli_team_mode():
     assert provider.config.team_context.org_id == "org-1"
     assert "team_memory_add" in agent.valid_tool_names
     assert "team_memory_search" in agent.valid_tool_names
+
+
+def test_aiagent_forwards_user_id_alt_to_memory_provider():
+    provider = RecordingMemoryProvider()
+    cfg = {"memory": {"provider": "recording"}, "agent": {}}
+
+    with (
+        patch("hermes_cli.config.load_config", return_value=cfg),
+        patch("hermes_cli.config.save_config"),
+        patch("plugins.memory.load_memory_provider", return_value=provider),
+        patch("agent.model_metadata.get_model_context_length", return_value=204_800),
+        patch("run_agent.get_tool_definitions", return_value=[]),
+        patch("run_agent.check_toolset_requirements", return_value={}),
+        patch("run_agent.OpenAI"),
+    ):
+        from run_agent import AIAgent
+
+        agent = AIAgent(
+            api_key="test-key-1234567890",
+            base_url="https://openrouter.ai/api/v1",
+            quiet_mode=True,
+            skip_context_files=True,
+            skip_memory=False,
+            session_id="sess-alt",
+            platform="feishu",
+            user_id="open-id",
+            user_id_alt="union-id",
+        )
+
+    assert agent._memory_manager is not None
+    assert provider.init_session_id == "sess-alt"
+    assert provider.init_kwargs["user_id"] == "open-id"
+    assert provider.init_kwargs["user_id_alt"] == "union-id"
+    assert provider.init_kwargs["platform"] == "feishu"
