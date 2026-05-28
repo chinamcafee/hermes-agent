@@ -2,88 +2,62 @@
 
 日期：2026-05-23
 状态：Implemented
-前置：`P4-01..P4-03`
+前置：`GTC-30..GTC-86`
 
 ## 目标
 
-本步骤固定 Team Cloud GA deployment smoke contract，覆盖 Docker Compose、Helm 和 Offline bundle 三种交付形态。GA 补审后，本地已完成 `helm lint` 与 Helm upgrade/rollback 验证；fresh compose smoke 记录 `compose_up_wait`、`foundation_smoke` 和 offline manifest 检查的最终运行结果。
+本步骤固定当前 Team Cloud GA deployment smoke contract，覆盖 Go 服务端构建、Kubernetes manifest、Dashboard static build 和 Offline bundle。旧 Python compose/Helm/offline 资产已经退役。
 
 ## 工件
 
 | 工件 | 用途 |
 | --- | --- |
-| `team_cloud/deployment_smoke.py` | `build_deployment_smoke_package()` 生成 deployment smoke JSON contract。 |
-| `scripts/team-cloud-deployment-smoke.py` | 写出 deployment smoke JSON artifact。 |
+| `team_cloud/deploy/kubernetes/team-cloud-go.yaml` | 当前 Kubernetes manifest。 |
+| `scripts/team-cloud-smoke.sh` | 当前 Go 服务端、Dashboard 和静态 schema smoke。 |
 | `teamDoc/GADoc/artifacts/release/team-cloud-deployment-smoke-v0.json` | P5-13 deployment smoke artifact。 |
-| `tests/team_cloud/test_deployment_smoke.py` | P5-13 contract 测试。 |
+| `scripts/team-cloud-offline-bundle.sh` | 当前离线资料包生成脚本。 |
 
 ## Gates
 
 | Gate | Target | Command |
 | --- | --- | --- |
-| `compose_smoke` | Docker Compose | `scripts/run_tests.sh tests/team_cloud/test_local_compose_stack.py tests/team_cloud/test_compose_hardening.py` |
-| `helm_static_smoke` | Helm | `scripts/run_tests.sh tests/team_cloud/test_helm_chart.py`、`helm lint deploy/team-cloud/helm/hermes-team-cloud`、Helm upgrade/rollback |
-| `offline_bundle_smoke` | Offline bundle | `scripts/run_tests.sh tests/team_cloud/test_offline_bundle.py` |
-| `fresh_environment_smoke` | fresh_ga_environment | `docker compose -f deploy/team-cloud/compose.yaml config`、`docker compose -f deploy/team-cloud/compose.yaml up --build`、`scripts/team-cloud-foundation-smoke.sh`、`deploy/team-cloud/offline/install.sh --manifest deploy/team-cloud/offline/manifest.yaml` |
+| `go_service_smoke` | Team Cloud Go | `cd team_cloud && go test ./... && go vet ./... && go build -o /tmp/hermes-team-cloud-server ./cmd/team-cloud-server` |
+| `dashboard_smoke` | Dashboard | `cd team_cloud/dashboard && npm test -- --run && npm run type-check && npm run build` |
+| `manifest_static_smoke` | Kubernetes | `scripts/team-cloud-spicedb-schema-ci.sh --static-only` |
+| `offline_bundle_smoke` | Offline bundle | `scripts/team-cloud-offline-bundle.sh` |
 
 ## GA matrix
 
 P5-13 覆盖：
 
-- `GA-REL-001`：Docker Compose deployment starts full stack with health checks。
-- `GA-REL-002`：Helm chart deploys and rolls back cleanly。
-- `GA-REL-003`：offline image bundle installs without internet access。
+- `GA-REL-001`：Go Team Cloud service builds and passes unit/integration tests。
+- `GA-REL-002`：Dashboard static build passes typecheck and tests。
+- `GA-REL-003`：Kubernetes manifest is the active deployment entry。
+- `GA-REL-004`：offline bundle contains current Go service assets and checksums。
 
 ## Fresh environment smoke
 
-`fresh_ga_environment` 是新环境部署 smoke 契约。当前本机验证记录：
+`fresh_ga_environment` 是新环境部署 smoke 契约。当前 Go 版主路径验证记录：
 
-- Docker：`Docker version 29.1.2`
-- Docker Compose：`Docker Compose version v2.40.3`
-- `docker compose -f deploy/team-cloud/compose.yaml config`：passed
-- `compose_up_wait`：passed；首次执行发现 `minio/mc:RELEASE.2025-09-07T16-13-09Z` 不存在，已将 mc client image 修正为 `minio/mc:RELEASE.2025-08-13T08-35-41Z`，并为 registry-limited 环境增加镜像覆盖变量。
-- `foundation_smoke`：passed
-- `helm lint`：passed
-- `helm upgrade/rollback`：passed；本地 kind smoke 覆盖首次 install、二次 upgrade（`config.logLevel=DEBUG`）和 rollback。
-- `offline_install_manifest_check`：passed
+- `scripts/team-cloud-smoke.sh` 覆盖 Go test/vet/build、Dashboard test/typecheck/build 和 schema static check。
+- `scripts/team-cloud-foundation-smoke.sh` 覆盖 Hermes Agent CLI/runtime 与 Team Cloud provider 集成。
+- `scripts/team-cloud-isolation-smoke.sh` 覆盖身份、隔离和团队上下文边界。
+- `scripts/team-cloud-offline-bundle.sh` 生成 `team_cloud/offline/dist/hermes-team-cloud-offline` 并写入 `SHA256SUMS`。
 
 完整新环境执行命令：
 
 ```bash
-docker compose -f deploy/team-cloud/compose.yaml config
-HERMES_TEAM_PLATFORM=linux/amd64 \
-TEAM_CLOUD_PYTHON_BASE_IMAGE=mirror.gcr.io/library/python:3.13-slim-bookworm \
-ALPINE_IMAGE=mirror.gcr.io/library/alpine:3.22.2 \
-MINIO_IMAGE=quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z \
-MINIO_MC_IMAGE=quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z \
-MAILPIT_IMAGE=ghcr.io/axllent/mailpit:v1.29.5 \
-TEAM_WEB_IMAGE=mirror.gcr.io/library/nginx:1.29.3-alpine \
-docker compose -p hermes-team-cloud-ga-smoke -f deploy/team-cloud/compose.yaml up --build --wait --wait-timeout 300
+scripts/team-cloud-smoke.sh
 scripts/team-cloud-foundation-smoke.sh
-helm lint deploy/team-cloud/helm/hermes-team-cloud
-helm upgrade --install hermes-team-cloud-ga-smoke deploy/team-cloud/helm/hermes-team-cloud \
-  --namespace hermes-ga-smoke --create-namespace --atomic --wait --timeout 120s \
-  --set replicaCount.api=0 --set replicaCount.worker=0 --set replicaCount.web=0 \
-  --set jobs.migrations.enabled=false --set jobs.spicedbSchema.enabled=false \
-  --set jobs.minioBuckets.enabled=false --set persistence.enabled=false
-helm upgrade hermes-team-cloud-ga-smoke deploy/team-cloud/helm/hermes-team-cloud \
-  --namespace hermes-ga-smoke --atomic --wait --timeout 120s \
-  --set replicaCount.api=0 --set replicaCount.worker=0 --set replicaCount.web=0 \
-  --set jobs.migrations.enabled=false --set jobs.spicedbSchema.enabled=false \
-  --set jobs.minioBuckets.enabled=false --set persistence.enabled=false \
-  --set config.logLevel=DEBUG
-helm rollback hermes-team-cloud-ga-smoke 1 --namespace hermes-ga-smoke --wait --timeout 120s
+scripts/team-cloud-isolation-smoke.sh
+scripts/team-cloud-offline-bundle.sh
 ```
 
-offline bundle 在本地 GA smoke 中以 manifest 完整性验证关闭；air-gapped 安装环境继续使用：
+offline bundle 在本地 GA smoke 中以 checksum 完整性验证关闭；air-gapped 安装环境继续使用：
 
 ```bash
-deploy/team-cloud/offline/install.sh --manifest deploy/team-cloud/offline/manifest.yaml
+scripts/team-cloud-offline-bundle.sh
 ```
-
-## Helm lint
-
-`helm lint` 已在本地补跑并通过。P5-13 artifact 将该状态记录为 `helm_lint_status == passed`，同时通过 `tests/team_cloud/test_helm_chart.py` 覆盖 chart 结构、values 和模板静态契约。
 
 ## Acceptance thresholds
 

@@ -18,10 +18,10 @@
 ## 验证证据
 
 - `go test ./internal/httpapi ./internal/store/postgres ./internal/store/memory ./internal/store`
-- `cd team_cloud_go && go test ./...`
-- `cd team_cloud_go && go vet ./...`
-- `cd team_cloud_go && go build ./cmd/team-cloud-server`
+- `cd team_cloud && go test ./...`
+- `cd team_cloud && go vet ./...`
+- `cd team_cloud && go build ./cmd/team-cloud-server`
 - Kubernetes YAML parse：`kubernetes yaml ok: Secret,Deployment,Service`
-- `git diff --check -- team_cloud_go teamDoc`
+- `git diff --check -- team_cloud teamDoc`
 - 红灯证据：新增测试前，`TestMemoryPrefetchRanksByQueryEmbedding` 返回 ID 顺序而非 embedding 相似度顺序；schema test 缺少 vector extension。
 - 绿灯证据：实现后，上述局部测试通过。

@@ -12,7 +12,7 @@
 
 | 工件 | 用途 |
 | --- | --- |
-| `team_cloud/tool_policy.py` | `TeamToolPolicyHook`、风险到 SpiceDB permission 映射、Team actor 解析。 |
+| `agent/team_tool_policy.py` | `TeamToolPolicyHook`、风险到 permission 映射、Team actor 解析。旧 Python `team_cloud.tool_policy` 已退役。 |
 | `plugins/team_policy/` | repo-shipped env-gated policy plugin，注册 `pre_tool_call`。 |
 | `hermes_cli/plugins.py` | `get_pre_tool_call_block_message()` 支持透传 `team_context/platform/user_id`。 |
 | `agent/tool_dispatch_helpers.py` | agent-owned tool path 的共享 pre hook 上下文构造。 |
@@ -47,14 +47,13 @@
 
 - 不触发 Hermes approval flow；P3-03 实现高危工具审批。
 - 不写 `cloud_tool_calls` 和 audit；P3-04 实现工具审计。
-- 不在 `run_agent.py` 或 `model_tools.py` 写死 Team Cloud 业务逻辑；策略逻辑集中在 `team_cloud.tool_policy` 和插件 hook。
+- 不在 `run_agent.py` 或 `model_tools.py` 写死 Team Cloud 业务逻辑；策略逻辑集中在 `agent.team_tool_policy` 和插件 hook。
 - 不新增 SpiceDB 网络 transport；P1 的 `SpiceDBClient` 抽象作为注入边界，本步骤只定义 hook contract。
 
 ## 验证
 
 ```bash
-scripts/run_tests.sh tests/team_cloud/test_team_tool_policy_hook.py
-venv/bin/ruff check team_cloud/tool_policy.py plugins/team_policy/__init__.py tests/team_cloud/test_team_tool_policy_hook.py hermes_cli/plugins.py agent/tool_dispatch_helpers.py agent/tool_executor.py agent/agent_runtime_helpers.py model_tools.py
-venv/bin/python -m py_compile team_cloud/tool_policy.py plugins/team_policy/__init__.py hermes_cli/plugins.py agent/tool_dispatch_helpers.py agent/tool_executor.py agent/agent_runtime_helpers.py model_tools.py
+venv/bin/python -m pytest tests/hermes_cli/test_team_tool_policy.py -q
+venv/bin/python -m py_compile agent/team_tool_policy.py plugins/team_policy/__init__.py hermes_cli/plugins.py agent/tool_dispatch_helpers.py agent/tool_executor.py agent/agent_runtime_helpers.py model_tools.py
 scripts/team-cloud-foundation-smoke.sh
 ```

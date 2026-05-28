@@ -36,12 +36,12 @@
 
 | 用途 | 组件 | 冻结版本 | 许可证 | 处理方式 |
 | --- | --- | --- | --- | --- |
-| Team API runtime | Go toolchain | `1.24.5` | BSD-style | `team_cloud_go/go.mod` 使用 `go 1.24.0` 和 `toolchain go1.24.5`。 |
-| PostgreSQL driver | `github.com/jackc/pgx/v5` | `v5.7.6` | MIT | 用于 `team_cloud_go/internal/store/postgres`，通过 Go module 精确版本锁定。 |
+| Team API runtime | Go toolchain | `1.24.5` | BSD-style | `team_cloud/go.mod` 使用 `go 1.24.0` 和 `toolchain go1.24.5`。 |
+| PostgreSQL driver | `github.com/jackc/pgx/v5` | `v5.7.6` | MIT | 用于 `team_cloud/internal/store/postgres`，通过 Go module 精确版本锁定。 |
 
 ## Python 参考实现依赖冻结
 
-Python `team_cloud/` 未上线，后续仅作为参考实现；首次上线服务端以 `team_cloud_go/` 为准。
+`team_cloud/` 当前为 Go 服务端源码；旧 Python 服务端已经删除，首次上线服务端以该 Go 目录为准。
 
 | 用途 | 包 | 冻结版本 | 许可证 | 处理方式 |
 | --- | --- | --- | --- | --- |

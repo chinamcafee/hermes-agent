@@ -6,8 +6,10 @@
 
 1. 先读 [01-work-package-register.md](01-work-package-register.md)，确认全部工作包、依赖和人周估算。
 2. 按阶段执行 [02-phase-0-1-foundation-steps.md](02-phase-0-1-foundation-steps.md)、[03-phase-2-memory-runtime-steps.md](03-phase-2-memory-runtime-steps.md)、[04-phase-3-governance-steps.md](04-phase-3-governance-steps.md)、[05-phase-4-5-beta-ga-steps.md](05-phase-4-5-beta-ga-steps.md)。
-3. Go 服务端替代 Python `team_cloud/` 的追加工作按 [06-team-cloud-go-service-steps.md](06-team-cloud-go-service-steps.md) 执行；该追加项允许破坏性更新，因为 Python 版从未上线部署。
-4. 每周更新 [progress-tracker.md](progress-tracker.md)，只更新状态、负责人、日期、阻塞项和证据链接。
+3. 当前 Go 服务端 `team_cloud/` 的追加工作按 [06-team-cloud-go-service-steps.md](06-team-cloud-go-service-steps.md) 执行；旧 Python 服务端已经删除，后续不再作为任务来源。
+4. Team Cloud Admin Dashboard V2 的独立初始化引导、单团队管理台和帐号密码登录改造按 [10-team-cloud-dashboard-v2-steps.md](10-team-cloud-dashboard-v2-steps.md) 执行。
+5. Team Cloud 只管理团队记忆和团队父人格、CLI 负责个人记忆和本地人格 MinIO 备份、Dashboard 备份管理和 CLI 熔断打磨按 [11-team-memory-backup-cli-polish-steps.md](11-team-memory-backup-cli-polish-steps.md) 执行；三方联动新增方案按 [../ThreePartyUnionDevDoc/README.md](../ThreePartyUnionDevDoc/README.md) 执行。
+6. 每周更新 [progress-tracker.md](progress-tracker.md)，只更新状态、负责人、日期、阻塞项和证据链接。
 
 ## 估算口径
 
@@ -26,7 +28,7 @@
 | P3 数据治理与权限硬化 | 工具权限、个人备份、导出删除、break-glass、审计 | 22 | 49 人周 |
 | P4 Beta 验证 | 部署包、压测、安全测试、观测、试点 | 18 | 28 人周 |
 | P5 GA 发布 | 发布文档、Runbook、SBOM、最终回归和签字 | 15 | 18 人周 |
-| GTC Go 服务端重写 | 用 Go 服务替代未上线的 Python Team Cloud，补齐 K8s 部署形态 | 10 | 追加需求 |
+| GTC Go 服务端重写 | 以当前 `team_cloud/` Go 服务补齐 K8s 部署形态 | 10 | 追加需求 |
 
 ## Definition of Done
 

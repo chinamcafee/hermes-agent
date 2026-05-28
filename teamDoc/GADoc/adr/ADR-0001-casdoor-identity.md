@@ -10,7 +10,7 @@ Hermes Team Agent GA 需要支持企业登录、MFA、外部 IdP、组织用户�
 
 ## 决策
 
-使用 Casdoor 作为默认身份认证和身份生命周期系统。Team Cloud 只信任 Casdoor OIDC/JWT/JWKS、Casdoor webhook/SCIM/reconcile 结果，以及 Team Cloud 自己签发的 service token。Team Cloud 不保存用户密码，不实现登录表单，不把 Casdoor group/role 直接当最终资源授权。
+使用 Casdoor 作为默认企业身份认证和身份生命周期系统。Team Cloud 只信任 Casdoor OIDC/JWT/JWKS、Casdoor webhook/SCIM/reconcile 结果，以及 Team Cloud Go 登录后签发并存储在 Redis 的 Dashboard session token。Team Cloud Go 第一版 Dashboard 为超级管理员/管理员提供本地管理页登录，密码只保存 bcrypt hash；不把 Casdoor group/role 直接当最终资源授权。
 
 Team Cloud 负责：
 

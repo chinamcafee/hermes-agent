@@ -1,96 +1,111 @@
-# 15. MinIO 个人记忆备份与恢复设计
+# 15. MinIO 本地 memory/soul 云备份与恢复设计
 
 ## 1. 目标
 
-成员能自行定时备份个人记忆，并在需要时下载、恢复或删除。备份不替代 PostgreSQL canonical memory，而是用户可控的数据可携带能力。
+成员能在 Hermes CLI 中自行定时备份个人记忆和本地人格，并在需要时列出历史或恢复。个人记忆和本地 `SOUL.md` 不进入 Team Cloud 云端 PostgreSQL，也不由 Dashboard 管理；备份目标是用户自己配置的 MinIO/S3-compatible 地址。
+
+新主入口统一为 `/cloud-backup`。项目尚未上线部署，旧 `/memory-backup` 不保留兼容别名或迁移提示；后续实现必须直接删除旧入口，所有新文档、Desktop UI 和 release manual 均以 `/cloud-backup memory ...`、`/cloud-backup soul ...` 为准。
 
 ## 2. 备份包格式
 
 ```text
-backup.zip.enc
-  manifest.json
-  memories.jsonl
-  memory_events.jsonl
-  README.md
+memory: <timestamp>-personal-memory.json
+soul:   <timestamp>-local-soul.json
 ```
 
-`manifest.json`：
+Memory JSON 根对象：
 
 ```json
 {
-  "version": 1,
-  "org_id": "...",
-  "member_id": "...",
-  "backup_id": "...",
+  "format": "hermes-cloud-backup-memory-v1",
+  "resource_type": "memory",
   "created_at": "...",
-  "item_count": 120,
-  "checksum_sha256": "...",
-  "encryption": "org_managed",
-  "embedding_included": false
+  "files": [
+    {
+      "path": "MEMORY.md",
+      "content": "..."
+    }
+  ]
+}
+```
+
+Soul JSON 根对象：
+
+```json
+{
+  "format": "hermes-cloud-backup-soul-v1",
+  "resource_type": "soul",
+  "created_at": "...",
+  "path": "SOUL.md",
+  "content_base64": "...",
+  "checksum_sha256": "..."
 }
 ```
 
 ## 3. 加密
 
-默认：
-
-- 服务端 envelope encryption。
-- 每个备份一个 data key。
-- data key 由 org key 加密。
-- `encryption_key_id` 写入 object manifest。
-
-可选：
-
-- 用户 passphrase 加密。
-- Team Cloud 不保存 passphrase。
-- passphrase 丢失则无法恢复。
+当前 CLI GA 版本使用用户自有对象存储的访问控制和传输层 TLS 保护备份对象。需要静态加密时，应使用 MinIO/S3 bucket-side encryption 或后续 CLI 客户端加密增强；Team Cloud 不保存成员个人备份、本地人格备份和 passphrase。
 
 ## 4. 调度
 
 ```text
-backup_policies
-  member_id
-  cadence
-  next_run_at
-  retention_count
+cloud_backup:
   enabled
+  endpoint
+  bucket
+  region
+  root_prefix
+  access_key_env
+  secret_key_env
+  resources:
+    memory:
+      prefix
+      cadence
+    soul:
+      prefix
+      cadence
 ```
 
 worker：
 
-- 按 `next_run_at` 扫描。
-- 使用 advisory lock 防止重复运行。
-- 失败重试 3 次。
-- 超过阈值通知成员。
+- `/cloud-backup memory schedule hourly|daily|weekly|monthly|off` 创建或关闭个人记忆 cron no-agent job。
+- `/cloud-backup soul schedule hourly|daily|weekly|monthly|off` 创建或关闭本地人格 cron no-agent job。
+- cron job 分别执行 `hermes cloud-backup memory backup` 和 `hermes cloud-backup soul backup`。
+- `/cloud-backup memory backup`、`/cloud-backup soul backup` 可随时手动触发。
+
+对象 key 必须按 resource type 分目录：
+
+```text
+<root_prefix>/profiles/<profile_id>/memory/YYYY/MM/YYYYMMDDTHHMMSSZ-personal-memory.json
+<root_prefix>/profiles/<profile_id>/soul/YYYY/MM/YYYYMMDDTHHMMSSZ-local-soul.json
+```
 
 ## 5. 恢复冲突策略
 
 | 冲突 | 默认策略 |
 | --- | --- |
-| checksum 相同 | skip |
-| normalized_content 相同但版本不同 | keep newer |
-| 内容相似但来源不同 | review |
-| 当前已删除 | ask user |
-| sensitivity 更高 | preserve higher sensitivity |
+| 目标 profile 已有同名文件 | 覆盖前提示用户确认目标 profile |
+| 备份格式不匹配 | 拒绝恢复 |
+| resource type 不匹配 | 拒绝恢复，防止 memory 和 soul 交叉覆盖 |
+| 对象 key 不存在 | 显示 object_not_found |
 
 恢复模式：
 
-- `preview_only`
-- `merge`
-- `overwrite`
-- `archive_current_then_restore`
+- memory 主路径为整包恢复到当前 profile 的 `memories/` 目录。
+- soul 主路径为恢复到当前 profile 的 `SOUL.md`。
 
 ## 6. 权限
 
-- 成员拥有自己的 backup。
-- Admin 默认不能读取 backup。
-- break-glass 需要 Security Admin + Owner 双人审批。
-- 删除 backup 只允许 owner 或合规删除流程。
+- 成员拥有自己配置的对象存储凭据。
+- Team Cloud 管理员不能通过 Dashboard 读取成员个人记忆备份或本地人格备份。
+- 备份对象删除由用户在自己的 MinIO/S3 bucket 生命周期或对象管理工具中完成。
 
 ## 7. 验收
 
-- weekly backup 自动生成。
-- 下载 URL 过期后不可用。
-- checksum mismatch 阻止恢复。
-- restore preview 能展示新增、跳过、冲突、覆盖数量。
-- 删除成员时可选择 export then delete。
+- `/cloud-backup config` 能写入 endpoint、bucket、region、root prefix 和 access/secret env key。
+- `/cloud-backup memory schedule weekly` 能创建个人记忆 Hermes cron no-agent job。
+- `/cloud-backup soul schedule weekly` 能创建本地人格 Hermes cron no-agent job。
+- `/cloud-backup memory backup` 能上传当前 profile `memories/` 文件。
+- `/cloud-backup soul backup` 能上传当前 profile `SOUL.md`。
+- `/cloud-backup memory history` 和 `/cloud-backup soul history` 只列各自 prefix 下备份。
+- `/cloud-backup memory restore <key>` 和 `/cloud-backup soul restore <key>` 能恢复到当前 profile，并拒绝 resource type 不匹配的备份。

@@ -1,5 +1,10 @@
 definition user {}
 
+// Historical Python Team Cloud schema artifact.
+// Go Team Cloud GA first launch uses the Kubernetes ConfigMap schema in
+// team_cloud/deploy/kubernetes/team-cloud-go.yaml, where organization is
+// the team-space resource and independent team/workgroup resources are retired.
+
 definition service_account {
   relation parent_org: organization
   relation owner: user

@@ -4,6 +4,8 @@
 状态：Implemented
 前置：`P1-13 组织/团队/成员 API`、`P1-16 Web 登录壳`
 
+> 2026-05-24 更新：本页记录的是早期 Python `team_cloud/` Web shell 交付历史。Go Team Cloud GA 首发版已由 GTC-65 退役独立工作组/teams API，Dashboard 当前只暴露单团队空间和成员管理。
+
 ## 目标
 
 本步骤在 P1-16 静态登录壳上增加组织作用域的最小管理界面，覆盖 teams、members、roles 三个页面。页面提供团队创建/list、成员邀请/list/禁用、角色展示，以及每个面板的 empty/error 状态。

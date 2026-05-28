@@ -37,7 +37,7 @@ mark_completed
 - `project`：匹配 `id` 或 `project_id`。
 - `org`：匹配请求 `org_id` 范围内全部记录。
 
-当前覆盖的 canonical rows 包括 memory items/events、cloud sessions、org members/teams/orgs。MinIO 对象通过 `ObjectManifestService.mark_deleted()` 删除 object bytes 并保留 manifest deletion state。
+当前覆盖的 canonical rows 包括 memory items/events、cloud sessions、org members/orgs。Go Team Cloud 首发版已退役独立 teams 工作组表。MinIO 对象通过 `ObjectManifestService.mark_deleted()` 删除 object bytes 并保留 manifest deletion state。
 
 ## Retry And Dead Letter
 

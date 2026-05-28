@@ -2,6 +2,8 @@
 
 日期：2026-05-23
 
+> 2026-05-24 更新：本文中的 service token automation 口径已被 GTC-60~64 取代。当前 Go 服务端使用 Redis session token 和 Casdoor/JWKS JWT；自动化或 CLI 后续应走成员级 token / PAT / OIDC，不再沿用部署级 service token。
+
 ## 范围
 
 本记录覆盖 Go Team Cloud 服务端 GA 复核中发现的三个阻塞面：
@@ -24,7 +26,7 @@
 - 请求 payload/query 中的 `org_id`、`member_id` 不能越过 JWT scope。
 - 组织、成员、团队、记忆、备份、导出、删除、工具策略、session 和 runtime 入口增加授权守卫。
 - `team_shared` prefetch 对每条团队记忆执行 `read_team` 检查，无授权时过滤团队分区。
-- service token 保留为内部 automation 通道。
+- 成员级 token / PAT / OIDC 作为后续 automation 通道；部署级 service token 已退役。
 
 ### GTC-20 加密备份对象
 
@@ -42,10 +44,10 @@
 
 GTC-21 最终全量验证：
 
-- `cd team_cloud_go && go test ./...`
-- `cd team_cloud_go && go vet ./...`
-- `cd team_cloud_go && go build ./cmd/team-cloud-server`
+- `cd team_cloud && go test ./...`
+- `cd team_cloud && go vet ./...`
+- `cd team_cloud && go build ./cmd/team-cloud-server`
 - Ruby YAML parse：`kubernetes yaml ok: Secret,Deployment,Service`
-- `git diff --check -- team_cloud_go teamDoc`
+- `git diff --check -- team_cloud teamDoc`
 
 以上命令已在 scheduled backup runner 补齐后重新执行并通过。

@@ -24,11 +24,12 @@ Authorization Plane
       └─ schema validation in CI
 
 Team Cloud Control Plane
-  ├─ Team API (Go net/http service, team_cloud_go/)
+  ├─ Team API (Go net/http service, team_cloud/)
   ├─ Team Cloud Admin Dashboard (Next.js static export, /dashboard/)
   ├─ Auth Middleware (Casdoor JWT validation)
   ├─ Authorization Gateway (SpiceDB client)
   ├─ Memory API
+  ├─ Team Parent Soul API
   ├─ Session API
   ├─ Admin/Data Management API
   ├─ Backup/Export API
@@ -39,19 +40,17 @@ Data Plane
   ├─ PostgreSQL
   │   ├─ product schema
   │   ├─ cloud sessions/messages/tools
-  │   ├─ memory_items / memory_embeddings
+  │   ├─ team memory_items / memory_embeddings
   │   ├─ audit_events / outbox_events
   │   └─ pgvector indexes
-  └─ MinIO
-      ├─ personal-memory-backups
-      ├─ org-exports
-      ├─ attachments
-      ├─ document-sources
-      └─ restore-staging
+  └─ Optional MinIO/S3-compatible object store
+      ├─ team-memory-backups
+      └─ team-soul-backups
 
 Hermes Runtime Plane
   ├─ hermes-agent workers
   ├─ TeamMemoryProvider
+  ├─ Local personal memory + local SOUL.md + /cloud-backup
   ├─ TeamToolPolicyHook
   ├─ TeamGateway identity resolver
   ├─ Existing tools / skills / Gateway adapters
@@ -62,13 +61,14 @@ Hermes Runtime Plane
 
 | 边界 | 规则 |
 | --- | --- |
-| AuthN | 只信任 Casdoor token、Casdoor JWKS 和 Team Cloud service token |
+| AuthN | 只信任 Casdoor token、Casdoor JWKS 和 Team Cloud Go 登录后签发的 Redis session token |
 | AuthZ | 所有资源级访问必须经过 SpiceDB；数据库 ACL shadow 只做缓存 |
-| Memory | PostgreSQL 中 `memory_items` 是唯一 canonical memory |
-| Backup | MinIO 对象必须有 PostgreSQL manifest、checksum、owner 和审计 |
+| Memory | Team Cloud PostgreSQL 中 `memory_items` 只承载团队记忆；个人记忆留在本地 Hermes profile |
+| Soul | Team Cloud Go 管理团队父人格；本地 `SOUL.md` 是成员子人格；team mode 下保存本地人格会由 Hermes Agent 调用当前模型供应商合并 effective soul，冲突以团队父人格为准 |
+| Backup | Team Cloud 团队记忆备份以 memory id 做幂等恢复；团队父人格备份以 org/team active soul 做幂等恢复；MinIO/S3 仅为可选对象存储 |
 | Runtime | Hermes worker 不直接决定团队权限，只执行 Team Cloud 注入的上下文和 hook |
-| Admin | Team Cloud 云端管理台随 `team_cloud_go` 部署，管理 API 需要 service token 或 Casdoor 登录 + SpiceDB check |
-| Local Hermes UI | 本地 Hermes dashboard/CLI 不承载团队云端管理，只保存远程 Team Cloud 地址、token 和个人本地运行配置 |
+| Admin | Team Cloud 云端管理台随 `team_cloud` 部署，首次初始化后管理 API 需要 Dashboard session token 或 Casdoor 登录 + SpiceDB check |
+| Local Hermes UI | 本地 Hermes dashboard/CLI/Desktop 不承载团队云端管理，只通过 Hermes Agent Bridge 保存远程 Team Cloud 地址、token 和个人本地运行配置 |
 
 ## 3. Team API
 
@@ -83,10 +83,11 @@ Hermes Runtime Plane
 
 实现说明：
 
-- 首次上线的 Team API 由 `team_cloud_go/` 提供，Python `team_cloud/` 不作为部署目标。
-- Go 服务默认暴露 health/readiness/metrics、`/dashboard/` 静态管理台、bootstrap API、组织团队成员 API、双层记忆 API、review queue 和个人备份策略 API。
+- 首次上线的 Team API 由 `team_cloud/` Go 服务提供；旧 Python 服务端已经删除，不作为部署目标或参考执行路径。
+- Go 服务默认暴露 health/readiness/metrics、`/dashboard/` 静态管理台、bootstrap API、组织团队成员 API、团队记忆 API、团队父人格 API、review queue、团队记忆备份 API 和团队父人格备份 API。
 - `TEAM_CLOUD_DATABASE_URL` 存在时使用 PostgreSQL `tcg_*` schema；为空时使用内存后端，仅用于开发测试。
-- `team_cloud_go/dashboard/` 是 Team Cloud 管理页面唯一归属，包含首次初始化、超级管理员创建、组织/团队/成员、权限关系、记忆审核、备份策略和审计视图。
+- `team_cloud/dashboard/` 是 Team Cloud 管理页面唯一归属，包含首次初始化、超级管理员创建、团队成员、只读角色权限说明、记忆治理、团队父人格治理、团队级备份管理和审计视图。
+- Hermes Desktop 可以打开 Dashboard URL，但不复制 Dashboard 功能，也不直连 Team Cloud 业务 API；Desktop 只调用 Hermes Agent CLI/API Bridge。
 
 必须实现的中间件：
 
@@ -178,10 +179,13 @@ PATCH /v1/memory/{id}
 DELETE /v1/memory/{id}
 POST /v1/memory/{id}/promote
 POST /v1/memory/{id}/archive
+POST /v1/memory/{id}/disable
 GET  /v1/memory/review
 POST /v1/memory/review/{id}/approve
 POST /v1/memory/observations
 ```
+
+Go Team Cloud 首发版中，`DELETE /v1/memory/{id}` 对 Dashboard 记忆治理表示硬删除；停用记忆使用 `POST /v1/memory/{id}/disable`，落库为 `archived`。团队记忆来源通过 `source_type=auto_extracted/admin_created`、`source_member_id` 和 `created_by_member_id` 标识。CLI 显式新增团队记忆走 `team_memory_add`，写入 `status=active`；`/v1/memory/observations` 只保存可供后续抽取的 observation，Go 首发服务端不内置常驻 extraction worker。
 
 所有读取流程：
 
@@ -195,25 +199,22 @@ POST /v1/memory/observations
 7. 写入 memory_read audit event。
 ```
 
-## 7. MinIO 数据流
+## 7. 对象存储数据流
 
-对象桶：
+Team Cloud 服务端不再把 MinIO 作为必备组件。只有启用团队记忆或团队父人格备份对象存储时，才需要配置 S3/MinIO endpoint、bucket、access key 和加密 key；否则团队备份可保存在 PostgreSQL backup job snapshot 中。个人记忆和本地人格备份由本地 Hermes CLI `/cloud-backup memory|soul` 直接写入用户指定的 MinIO/S3-compatible 地址，不进入 Team Cloud 管理面。
+
+Team Cloud 可选对象桶：
 
 ```text
-hermes-personal-backups
-hermes-org-exports
-hermes-attachments
-hermes-document-sources
-hermes-restore-staging
+hermes-team-memory-backups
+hermes-team-soul-backups
 ```
 
 对象 key 约定：
 
 ```text
-org/{org_id}/member/{member_id}/personal-memory/{yyyy}/{mm}/{backup_id}.jsonl.enc
-org/{org_id}/exports/{export_id}/manifest.json
-org/{org_id}/documents/{document_id}/source.bin
-org/{org_id}/restore/{restore_job_id}/staging.jsonl.enc
+org/{org_id}/team-memory/{yyyy}/{mm}/{backup_id}.jsonl.enc
+org/{org_id}/team-soul/{yyyy}/{mm}/{backup_id}.json.enc
 ```
 
 所有对象必须在 PostgreSQL 中有 manifest：
@@ -256,6 +257,8 @@ team_context
 - `prefetch()` 调 Memory API。
 - `sync_turn()` 写 observations。
 - `get_tool_schemas()` 暴露记忆管理工具。
+- `team_memory_add` 处理显式新增 active 团队记忆。
+- `team_memory_propose` 处理待审核候选。
 - `handle_tool_call()` 对写操作先走 SpiceDB check。
 
 `TeamToolPolicyHook`：

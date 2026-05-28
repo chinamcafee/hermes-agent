@@ -2,12 +2,14 @@
 
 ## 范围
 
-本轮补齐二次 GA 复核发现的阻塞项，继续保持 Python `team_cloud/` 不修改。
+本轮补齐二次 GA 复核发现的阻塞项。当前 `team_cloud/` 已经是 Go 服务端源码，旧 Python 服务端不再保留。
+
+> 2026-05-24 更新：GTC-60~64 已取消部署级 service token。本文 GTC-24 中的 relationship write 凭据要求应按当前口径理解为 Dashboard Redis session token、Casdoor/JWKS JWT、成员级 token 或 PAT。
 
 ## 已完成项
 
 - GTC-24：高风险治理 API 授权硬化。
-  - authz relationship 写入要求 service token 或 org admin。
+  - authz relationship 写入要求已登录管理帐号、成员级 token/PAT/OIDC，或 org admin 授权。
   - audit 读取、review queue、backup detail、deletion execute、runtime event 和组织列表按 JWT principal 做租户和资源归属授权。
   - JWT 请求不再信任请求体中的 `actor_member_id` 作为授权依据。
 - GTC-25：对象存储恢复闭环。
@@ -30,7 +32,7 @@
 已运行并通过：
 
 ```bash
-cd team_cloud_go
+cd team_cloud
 go test ./internal/httpapi ./internal/backup ./internal/objectstore ./internal/store/postgres -count=1
 ```
 

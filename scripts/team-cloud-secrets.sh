@@ -2,14 +2,18 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SECRETS_DIR="$ROOT_DIR/deploy/team-cloud/secrets"
+OUT_DIR="${OUT_DIR:-$ROOT_DIR/team_cloud/.local/secrets}"
+OUT_FILE="$OUT_DIR/team_cloud.env"
 FORCE=0
 
 if [[ "${1:-}" == "--force" ]]; then
   FORCE=1
 fi
 
-mkdir -p "$SECRETS_DIR"
+if [[ -e "$OUT_FILE" && "$FORCE" != "1" ]]; then
+  echo "Team Cloud local env already exists: $OUT_FILE"
+  exit 0
+fi
 
 rand() {
   python - <<'PY'
@@ -18,26 +22,23 @@ print(secrets.token_urlsafe(36))
 PY
 }
 
-write_secret() {
-  local name="$1"
-  local value="$2"
-  local path="$SECRETS_DIR/$name"
-  if [[ -e "$path" && "$FORCE" != "1" ]]; then
-    return
-  fi
-  umask 077
-  printf '%s\n' "$value" > "$path"
-}
+mkdir -p "$OUT_DIR"
+umask 077
+cat > "$OUT_FILE" <<EOF
+# Local development env for the Go Team Cloud service.
+# For Kubernetes, create Secrets from equivalent values instead of mounting this file.
+TEAM_CLOUD_DATABASE_URL=postgres://hermes:$(rand)@127.0.0.1:5432/hermes_team_cloud?sslmode=disable
+TEAM_CLOUD_REDIS_ADDR=127.0.0.1:6379
+TEAM_CLOUD_REDIS_PASSWORD=$(rand)
+TEAM_CLOUD_SESSION_TTL_SECONDS=86400
+TEAM_CLOUD_AUTO_MIGRATE=true
+TEAM_CLOUD_DASHBOARD_ENABLED=true
+TEAM_CLOUD_DASHBOARD_DIR=$ROOT_DIR/team_cloud/dashboard/out
+TEAM_CLOUD_CASDOOR_ISSUER=http://127.0.0.1:8000
+TEAM_CLOUD_CASDOOR_AUDIENCE=hermes-team-cloud
+TEAM_CLOUD_CASDOOR_JWKS_URL=http://127.0.0.1:8000/.well-known/jwks
+TEAM_CLOUD_AUTHZ_MODE=local
+TEAM_CLOUD_BACKUP_OBJECT_MODE=disabled
+EOF
 
-team_db_password="$(rand)"
-write_secret "team_cloud_postgres_password.txt" "$(rand)"
-write_secret "team_cloud_database_url.txt" "postgresql://hermes_team_user:${team_db_password}@postgres:5432/hermes_team?sslmode=disable"
-write_secret "team_cloud_casdoor_db_password.txt" "$(rand)"
-write_secret "team_cloud_spicedb_db_password.txt" "$(rand)"
-write_secret "team_cloud_casdoor_client_secret.txt" "$(rand)"
-write_secret "team_cloud_spicedb_preshared_key.txt" "$(rand)"
-write_secret "team_cloud_minio_secret_key.txt" "$(rand)"
-write_secret "team_cloud_encryption_key.txt" "$(rand)"
-write_secret "team_cloud_minio_root_password.txt" "$(rand)"
-
-echo "Team Cloud secrets are ready in deploy/team-cloud/secrets"
+echo "Team Cloud Go local env written to $OUT_FILE"

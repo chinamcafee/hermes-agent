@@ -21,15 +21,13 @@
 
 - `POST /api/organizations`
 - `GET /api/organizations`
-- `POST /api/organizations/{org_id}/teams`
-- `GET /api/organizations/{org_id}/teams`
 - `POST /api/organizations/{org_id}/members/invite`
 - `PATCH /api/organizations/{org_id}/members/{member_id}/disable`
 
 ## 行为
 
 - 组织以 slug 作为当前内存实现的 stable id。
-- 团队隶属于组织。
+- 2026-05-24 起 Go Team Cloud 首发版退役独立工作组/子团队 API，团队空间直接由组织记录承载。
 - 邀请成员创建 `status=invited`。
 - 禁用成员设置 `status=suspended`，并写入：
   - operation: `delete`

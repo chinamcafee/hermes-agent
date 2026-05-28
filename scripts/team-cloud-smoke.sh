@@ -2,25 +2,30 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE_FILE="$ROOT_DIR/deploy/team-cloud/compose.yaml"
 
 cd "$ROOT_DIR"
 
-if [[ ! -f deploy/team-cloud/secrets/team_cloud_database_url.txt ]]; then
-  scripts/team-cloud-secrets.sh
+if [[ ! -d team_cloud ]]; then
+  echo "Missing Go Team Cloud service directory: team_cloud" >&2
+  exit 2
 fi
 
-docker compose -f "$COMPOSE_FILE" --env-file deploy/team-cloud/.env.example config >/dev/null
-docker compose -f "$COMPOSE_FILE" --env-file deploy/team-cloud/.env.example up -d --wait
+(
+  cd team_cloud
+  go test ./...
+  go vet ./...
+  go build -o /tmp/hermes-team-cloud-server ./cmd/team-cloud-server
+)
 
-curl -fsS http://localhost:8780/healthz >/dev/null
-curl -fsS http://localhost:8780/readyz >/dev/null
-curl -fsS http://localhost:19000/minio/health/ready >/dev/null
+if [[ -d team_cloud/dashboard ]]; then
+  (
+    cd team_cloud/dashboard
+    npm test -- --run
+    npm run type-check
+    npm run build
+  )
+fi
 
-docker compose -f "$COMPOSE_FILE" --env-file deploy/team-cloud/.env.example exec -T postgres \
-  psql -U hermes_superuser -d hermes_team -tAc "select extversion from pg_extension where extname = 'vector'" | grep -q '0.8.2'
+scripts/team-cloud-spicedb-schema-ci.sh --static-only
 
-docker compose -f "$COMPOSE_FILE" --env-file deploy/team-cloud/.env.example run --rm minio-init
-docker compose -f "$COMPOSE_FILE" --env-file deploy/team-cloud/.env.example run --rm spicedb-schema-load
-
-echo "Team Cloud local compose smoke checks passed"
+echo "Team Cloud Go smoke checks passed"

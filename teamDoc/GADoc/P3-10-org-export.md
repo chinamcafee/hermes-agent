@@ -25,7 +25,6 @@
 export.zip
   manifest.json
   organizations.jsonl
-  teams.jsonl
   members.jsonl
   projects.jsonl
   sessions.jsonl

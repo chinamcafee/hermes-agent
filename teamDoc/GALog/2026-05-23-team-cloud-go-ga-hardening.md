@@ -4,13 +4,13 @@
 
 ## 评估结论
 
-上一轮 `team_cloud_go/` 已完成独立服务骨架、团队管理、双层记忆、review queue、个人备份策略、PostgreSQL 后端和 Kubernetes 部署资产，但按 `teamDoc` 的 GA 标准仍缺认证、授权、审计、备份恢复、导出删除、工具策略和 runtime 事件桥。因此继续推进补强。
+上一轮 `team_cloud/` 已完成独立服务骨架、团队管理、双层记忆、review queue、个人备份策略、PostgreSQL 后端和 Kubernetes 部署资产，但按 `teamDoc` 的 GA 标准仍缺认证、授权、审计、备份恢复、导出删除、工具策略和 runtime 事件桥。因此继续推进补强。
 
 ## TDD 记录
 
 红灯：
 
-- 新增 `team_cloud_go/internal/httpapi/ga_capabilities_test.go`。
+- 新增 `team_cloud/internal/httpapi/ga_capabilities_test.go`。
 - 首次运行 `go test ./...` 失败于缺少 `CasdoorIssuer`、`CasdoorAudience`、`CasdoorJWKSURL` 配置字段和相关 API。
 
 绿灯：
@@ -36,14 +36,14 @@
 
 ## 依赖决策
 
-尝试评估 `github.com/authzed/authzed-go` 时发现当前可用版本链会将 Go module 提升到 Go 1.25 并拉入大量生成器和 lint 依赖。为保持 `team_cloud_go/Dockerfile` 的 Go 1.24 基线，本轮未引入该 SDK。远程 SpiceDB gRPC 适配应拆为后续任务，当前 Go 服务提供本地持久化 relationship/check 语义闭环。
+尝试评估 `github.com/authzed/authzed-go` 时发现当前可用版本链会将 Go module 提升到 Go 1.25 并拉入大量生成器和 lint 依赖。为保持 `team_cloud/Dockerfile` 的 Go 1.24 基线，本轮未引入该 SDK。远程 SpiceDB gRPC 适配应拆为后续任务，当前 Go 服务提供本地持久化 relationship/check 语义闭环。
 
 ## 新鲜验证
 
-- `cd team_cloud_go && go test ./...` 已通过。
+- `cd team_cloud && go test ./...` 已通过。
 
 后续仍需在最终收尾前运行：
 
-- `cd team_cloud_go && go vet ./...`
-- `cd team_cloud_go && go build ./cmd/team-cloud-server`
-- `git diff --check -- team_cloud_go teamDoc`
+- `cd team_cloud && go vet ./...`
+- `cd team_cloud && go build ./cmd/team-cloud-server`
+- `git diff --check -- team_cloud teamDoc`

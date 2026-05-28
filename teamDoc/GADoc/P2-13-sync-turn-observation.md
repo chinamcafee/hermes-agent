@@ -12,10 +12,10 @@
 
 | 工件 | 用途 |
 | --- | --- |
-| `team_cloud/api.py` | 新增 `memory_observation_repository` app factory 接入和 `POST /v1/memory/observations`。 |
-| `team_cloud/memory/provider.py` | `sync_turn()` 可选透传 `turn_metadata` 和 `tool_summaries`。 |
-| `tests/team_cloud/test_memory_observations_api.py` | 覆盖 observation API、metadata/tool summaries 和 context fencing。 |
-| `tests/team_cloud/test_team_memory_provider.py` | 覆盖 provider `sync_turn()` metadata/tool summaries 透传。 |
+| `team_cloud/internal/httpapi/server.go` | Go Team Cloud `POST /v1/memory/observations` 接入。 |
+| `agent/team_memory_provider.py` | `sync_turn()` 可选透传 `turn_metadata` 和 `tool_summaries`。 |
+| `team_cloud/internal/httpapi/server_test.go` | 覆盖 observation API、metadata/tool summaries 和 context fencing。 |
+| `tests/hermes_cli/test_team_memory_provider.py` | 覆盖 provider `sync_turn()` metadata/tool summaries 透传。 |
 | `teamDoc/GALog/2026-05-22-p2-13-sync-turn-observation.md` | TDD 红绿记录和回归证据。 |
 
 ## 行为

@@ -31,7 +31,7 @@
     {
       "id": "memory_api",
       "title": "Memory API",
-      "description": "Create, list, update, archive, delete, restore, observe, and prefetch memory."
+      "description": "Create, list, update, disable, hard delete, restore, observe, prefetch memory, and preserve team memory source labels."
     },
     {
       "id": "memory_review_api",
@@ -107,16 +107,6 @@
     },
     {
       "section": "admin_api",
-      "method": "POST",
-      "path": "/api/organizations/{org_id}/teams"
-    },
-    {
-      "section": "admin_api",
-      "method": "GET",
-      "path": "/api/organizations/{org_id}/teams"
-    },
-    {
-      "section": "admin_api",
       "method": "GET",
       "path": "/api/organizations/{org_id}/members"
     },
@@ -179,6 +169,11 @@
       "section": "memory_api",
       "method": "POST",
       "path": "/v1/memory/{memory_id}/archive"
+    },
+    {
+      "section": "memory_api",
+      "method": "POST",
+      "path": "/v1/memory/{memory_id}/disable"
     },
     {
       "section": "memory_api",

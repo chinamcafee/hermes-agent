@@ -3,9 +3,11 @@
 日期：2026-05-23
 状态：Implemented
 
+> 2026-05-24 更新：本文“Service token”相关段落已被 GTC-60~64 取代。当前 Team Cloud Go 管理面使用无 token 首次初始化、Redis Dashboard session token 和 Casdoor/JWKS JWT，不再保留部署级 service token 作为 Dashboard 或业务 API 通道。
+
 ## 目标
 
-补齐 `team_cloud_go/` 从最小 Team API 到 GA 服务端所需的关键能力面，使 Go 版不只提供成员和记忆 CRUD，还能覆盖认证、授权、审计、备份恢复、导出删除、工具策略和 runtime event bridge。
+补齐 `team_cloud/` 从最小 Team API 到 GA 服务端所需的关键能力面，使 Go 版不只提供成员和记忆 CRUD，还能覆盖认证、授权、审计、备份恢复、导出删除、工具策略和 runtime event bridge。
 
 ## 已实现范围
 
@@ -21,9 +23,9 @@
 
 ## 认证设计
 
-Go 服务端现在支持两类入口：
+Go 服务端当前支持两类入口：
 
-- Service token：内部服务、迁移脚本和部署 smoke 使用。
+- Dashboard session token：管理页帐号密码登录后签发 `hcs_...` opaque token，服务端在 Redis 中保存 token 摘要和 principal。
 - Casdoor 风格 RS256 JWT：按 JWKS 校验 `kid`、签名、`iss`、`aud` 和 `exp`。
 
 配置项：
@@ -46,7 +48,7 @@ Go 服务端现在支持两类入口：
 ## 验证命令
 
 ```bash
-cd team_cloud_go
+cd team_cloud
 go test ./...
 go vet ./...
 go build ./cmd/team-cloud-server

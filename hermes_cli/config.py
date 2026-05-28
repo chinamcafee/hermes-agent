@@ -143,6 +143,9 @@ _EXTRA_ENV_KEYS = frozenset({
     "LANGFUSE_PUBLIC_KEY",
     "LANGFUSE_SECRET_KEY",
     "LANGFUSE_BASE_URL",
+    "HERMES_TEAM_CLOUD_URL",
+    "HERMES_TEAM_CLOUD_SESSION_TOKEN",
+    "HERMES_TEAM_CLOUD_MEMBER_TOKEN",
 })
 import yaml
 
@@ -1198,6 +1201,53 @@ DEFAULT_CONFIG = {
         # "hindsight", "holographic", "retaindb", "byterover".
         # Only ONE external provider is allowed at a time.
         "provider": "",
+    },
+
+    # Team Cloud CLI context. Non-secret connection and scope defaults live
+    # here; the login session token is stored in the profile .env key named by
+    # token_env.
+    "team_cloud": {
+        "enabled": False,
+        "url": "",
+        "default_org_id": "",
+        "default_team_id": "",
+        "default_project_id": "",
+        "default_member_id": "",
+        "token_env": "HERMES_TEAM_CLOUD_SESSION_TOKEN",
+        "circuit_breaker": {
+            "mode": "auto",
+            "state": "closed",
+            "failure_count": 0,
+            "failure_threshold": 3,
+            "recovery_after_seconds": 60,
+            "opened_until": "",
+            "last_error": "",
+        },
+    },
+
+    # Local profile cloud backup. Team Cloud does not manage personal memory or
+    # local soul; this profile-scoped setting backs up both resources to
+    # user-owned MinIO/S3-compatible storage.
+    "cloud_backup": {
+        "enabled": False,
+        "endpoint": "",
+        "bucket": "hermes-personal-cloud-backups",
+        "region": "us-east-1",
+        "prefix": "profiles",
+        "access_key_env": "HERMES_CLOUD_BACKUP_MINIO_ACCESS_KEY",
+        "secret_key_env": "HERMES_CLOUD_BACKUP_MINIO_SECRET_KEY",
+        "schedules": {
+            "memory": "off",
+            "soul": "off",
+        },
+        "cron_job_ids": {
+            "memory": "",
+            "soul": "",
+        },
+        "last_backup_keys": {
+            "memory": "",
+            "soul": "",
+        },
     },
 
     # Subagent delegation — override the provider:model used by delegate_task
@@ -3301,7 +3351,7 @@ _KNOWN_ROOT_KEYS = {
     "fallback_providers", "credential_pool_strategies", "toolsets",
     "agent", "terminal", "display", "compression", "delegation",
     "auxiliary", "custom_providers", "context", "memory", "gateway",
-    "sessions",
+    "sessions", "team_cloud", "cloud_backup",
 }
 
 # Valid fields inside a custom_providers list entry

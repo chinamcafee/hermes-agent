@@ -8,6 +8,8 @@
 
 本步骤固定 Team API、Memory API 和 AuthZ API 的 GA 文档 contract，并把 Chat/Session、Backup Policy、Audit、Usage 和 Notification API 纳入同一个 release artifact。文档只记录当前 `team_cloud/api.py` 已实现并由测试覆盖的接口。
 
+> 2026-05-24 GTC-77 更新：本文件属于 Python `team_cloud/` 历史 API artifact。Team Cloud Go 首发 GA 后，成员个人备份 policy API 不再作为主路径；本地 memory/soul 备份由 Hermes CLI `/cloud-backup memory|soul` 管理，团队父人格和团队备份 API 以 `teamDoc/ThreePartyUnionDevDoc/04-team-cloud-go-soul-api-dashboard-backup-plan.md` 为准。
+
 ## 工件
 
 | 工件 | 用途 |
@@ -38,8 +40,6 @@
 | `GET` | `/api/whoami` | 返回 JWT principal。 |
 | `POST` | `/api/organizations` | 创建组织。 |
 | `GET` | `/api/organizations` | 列出组织。 |
-| `POST` | `/api/organizations/{org_id}/teams` | 创建团队。 |
-| `GET` | `/api/organizations/{org_id}/teams` | 列出团队。 |
 | `GET` | `/api/organizations/{org_id}/members` | 列出成员。 |
 | `POST` | `/api/organizations/{org_id}/members/invite` | 邀请成员。 |
 | `PATCH` | `/api/organizations/{org_id}/members/{member_id}/disable` | 禁用成员并写 relationship delete outbox intent。 |
@@ -83,8 +83,8 @@
 
 | Method | Path | 说明 |
 | --- | --- | --- |
-| `GET` | `/v1/me/memory-backup-policy` | 读取成员个人记忆备份策略。 |
-| `PUT` | `/v1/me/memory-backup-policy` | 更新 cadence、retention、encryption 和 notification channels。 |
+| `GET` | `/v1/me/memory-backup-policy` | 历史 Python API：读取成员个人记忆备份策略；Go GA 主路径不再使用。 |
+| `PUT` | `/v1/me/memory-backup-policy` | 历史 Python API：更新 cadence、retention、encryption 和 notification channels；Go GA 主路径不再使用。 |
 
 ## Audit、Usage 和 Notification API
 

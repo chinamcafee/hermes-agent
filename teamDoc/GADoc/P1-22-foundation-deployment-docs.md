@@ -103,12 +103,12 @@ scripts/team-cloud-foundation-smoke.sh
 
 覆盖：
 
-- API：组织、团队、成员、permission explain。
+- API：组织/团队空间、成员、permission explain。
 - Auth：Casdoor OIDC、JWT middleware、PAT/service account、Casdoor sync worker。
 - AuthZ：SpiceDB client、schema CI、AuthZ middleware。
 - Outbox：relationship outbox 和成员禁用 relationship delete intent。
 - MinIO：bucket、manifest、signed URL。
-- Web：登录壳、members/teams/roles、permission panel。
+- Web：登录壳、members/roles、permission panel；Go 首发版已退役独立 teams 工作组页。
 - Security：伪造 token、禁用用户、跨 org 管理拒绝。
 - Observability：`/metrics`、structured request events、`/readyz` shape。
 

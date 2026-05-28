@@ -32,8 +32,6 @@
 
 ## AuthZ 路由规则
 
-- `POST /api/organizations/{org_id}/teams` -> organization `manage`
-- `GET /api/organizations/{org_id}/teams` -> organization `view`
 - `GET /api/organizations/{org_id}/members` -> organization `manage_members`
 - `POST /api/organizations/{org_id}/members/invite` -> organization `manage_members`
 - `PATCH /api/organizations/{org_id}/members/{member_id}/disable` -> organization `manage_members`

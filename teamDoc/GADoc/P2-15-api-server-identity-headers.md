@@ -1,18 +1,18 @@
 # P2-15 API Server identity headers
 
 日期：2026-05-22
-状态：Implemented
+状态：Superseded by GTC-60~64
 前置：`P2-14 AIAgent.team_context`
 
 ## 目标
 
-本步骤为 OpenAI-compatible API Server 增加 Team Cloud 可信 identity headers。API Server 只在 Team Cloud service token 校验通过后接受企业身份上下文，并把解析出的 `team_context` 传入 Hermes `AIAgent`。
+本步骤原计划为 OpenAI-compatible API Server 增加 Team Cloud 可信 identity headers。2026-05-24 后，Team Cloud Go 不再使用部署级 service token；后续 API Server / Gateway 身份透传必须改用成员级 token、OIDC/JWT 或 PAT 校验后再接受企业身份上下文。
 
 ## 工件
 
 | 工件 | 用途 |
 | --- | --- |
-| `gateway/platforms/api_server.py` | 解析 trusted headers、校验 service token、透传 `team_context`、更新 CORS/capabilities。 |
+| `gateway/platforms/api_server.py` | 解析 trusted headers、校验成员级 token/OIDC/PAT、透传 `team_context`、更新 CORS/capabilities。 |
 | `tests/gateway/test_api_server_team_headers.py` | 覆盖未配置 token 拒绝、无效 token 拒绝、有效 token 透传和 `_create_agent()` 传参。 |
 | `teamDoc/GALog/2026-05-22-p2-15-api-server-identity-headers.md` | TDD 红绿记录和回归证据。 |
 
@@ -20,7 +20,7 @@
 
 | Header | 必填 | 用途 |
 | --- | --- | --- |
-| `X-Hermes-Team-Cloud-Token` | 是 | Team Cloud service token。 |
+| `Authorization: Bearer ...` | 是 | 成员级 token、OIDC/JWT 或 PAT。 |
 | `X-Hermes-Org-Id` | 是 | Team Cloud organization id。 |
 | `X-Hermes-Team-Id` | 是 | Team Cloud team id。 |
 | `X-Hermes-Member-Id` | 是 | 当前 actor/member id。 |
@@ -30,11 +30,11 @@
 
 - 如果请求不带任何 Team identity header：
   - API Server 保持旧行为，不注入 `team_context`。
-- 如果请求带 Team identity header 但 API Server 未配置 `team_cloud_service_token`：
+- 如果请求带 Team identity header 但 API Server 未配置成员级 token/OIDC/PAT 校验：
   - 返回 `403 team_identity_not_configured`。
-- 如果请求带 Team identity header 但 service token 缺失或不匹配：
-  - 返回 `401 invalid_team_cloud_service_token`。
-- 如果 service token 通过：
+- 如果请求带 Team identity header 但 Bearer token 缺失或无效：
+  - 返回 `401 invalid_team_cloud_token`。
+- 如果 token 通过：
   - 要求 `org_id/team_id/member_id` 均存在。
   - 拒绝 CR/LF/NUL 和过长 header。
   - 生成 `team_context` 并传入 `_run_agent()`、`_create_agent()` 和最终 `AIAgent(...)`。

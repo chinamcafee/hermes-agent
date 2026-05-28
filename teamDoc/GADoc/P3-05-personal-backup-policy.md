@@ -8,6 +8,8 @@
 
 本步骤为个人记忆定时备份建立 policy contract：成员可以配置是否启用备份、周期、保留数量、导出范围、加密模式和通知渠道。实现范围限定在 policy service 和 Team Cloud API，不在本步骤实现 JSONL exporter、MinIO upload、restore preview 或 restore execute。
 
+> 2026-05-24 GTC-77 更新：本文件记录 Python `team_cloud/` 阶段的历史实现。Go Team Cloud GA 主路径不再管理成员个人备份策略；个人记忆和本地人格备份迁移到 Hermes CLI `/cloud-backup memory|soul`，Team Cloud Go 只管理团队记忆和团队父人格备份。
+
 ## 工件
 
 | 工件 | 用途 |

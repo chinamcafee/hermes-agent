@@ -2,64 +2,63 @@
 
 日期：2026-05-23
 状态：Implemented
-前置：`P4-01 Compose hardening`、`P4-02 Helm chart`、`P4-03 Offline bundle`、`P5-02 SBOM 和许可证包`
+前置：`GTC-30..GTC-86 Team Cloud Go / Dashboard / CLI / Desktop`、`P5-02 SBOM 和许可证包`
 
 ## 目标
 
-本步骤固定 Team Cloud GA 安装指南 contract，覆盖 `compose`、`helm`、`offline_bundle` 三条安装路径，给出安装前检查、首次登录 `first_login`、健康检查和常见故障排查入口。该指南把 P1 本地部署、P4 Helm/offline 交付和 P5 发布包串成一条可重复执行的 GA 安装路径。
+本步骤固定当前 Team Cloud GA 安装指南 contract，覆盖 `kubernetes_manifest`、`minikube`、`offline_bundle` 三条安装路径，给出安装前检查、首次登录 `first_login`、健康检查和常见故障排查入口。旧 Python compose/Helm 路径已退役。
 
 ## 工件
 
 | 工件 | 用途 |
 | --- | --- |
-| `team_cloud/install_guide.py` | `build_install_guide_package()` 生成安装指南 JSON contract。 |
-| `scripts/team-cloud-install-guide.py` | 写出 install guide JSON artifact。 |
+| `team_cloud/deploy/kubernetes/team-cloud-go.yaml` | 当前 Kubernetes 安装入口。 |
+| `scripts/team-cloud-offline-bundle.sh` | 基于 `team_cloud/` 生成离线资料包。 |
 | `teamDoc/GADoc/artifacts/release/team-cloud-install-guide-v0.json` | P5-03 安装指南 artifact。 |
-| `tests/team_cloud/test_install_guide.py` | P5-03 contract 测试。 |
+| `teamDoc/releaseManual/team-cloud-go-minikube-dashboard-manual.md` | minikube 本地 Kubernetes 部署手册。 |
 
 ## 安装路径
 
 | 路径 | 入口 | 场景 |
 | --- | --- | --- |
-| `compose` | `deploy/team-cloud/compose.yaml` | 单机、本地验证、开发或客户预检环境。 |
-| `helm` | `deploy/team-cloud/helm/hermes-team-cloud/Chart.yaml` | Kubernetes staging/production。 |
-| `offline_bundle` | `deploy/team-cloud/offline/install.sh` | 离线或受限网络环境，必须同时携带 manifest、镜像目录和 checksums。 |
+| `kubernetes_manifest` | `team_cloud/deploy/kubernetes/team-cloud-go.yaml` | Kubernetes staging/production。 |
+| `minikube` | `teamDoc/releaseManual/team-cloud-go-minikube-dashboard-manual.md` | 本地 Kubernetes 验收环境。 |
+| `offline_bundle` | `scripts/team-cloud-offline-bundle.sh` | 离线或受限网络环境，必须同时携带 manifest、镜像目录和 checksums。 |
 
-### compose
+### kubernetes_manifest
 
 ```bash
-docker compose -f deploy/team-cloud/compose.yaml up --build
+kubectl apply -f team_cloud/deploy/kubernetes/team-cloud-go.yaml
+kubectl rollout status deployment/hermes-team-cloud-go -n hermes-team-cloud --timeout=180s
 scripts/team-cloud-foundation-smoke.sh
 ```
 
-`compose` 安装必须先准备 `deploy/team-cloud/secrets/*.txt`，并按 `P1-22` 检查端口、secret file 和健康检查。
+Kubernetes 安装必须先准备 PostgreSQL、Redis、SpiceDB/Authzed 以及可选 MinIO/S3-compatible Secret/env。
 
-### helm
+### minikube
 
 ```bash
-helm upgrade --install hermes-team-cloud deploy/team-cloud/helm/hermes-team-cloud --atomic --wait
-scripts/team-cloud-foundation-smoke.sh
+open teamDoc/releaseManual/team-cloud-go-minikube-dashboard-manual.md
 ```
 
-`helm` 安装必须先完成 values 审核、secret 注入、Casdoor redirect allowlist 和 ingress/TLS 配置。当前仓库不假定本机安装了 Helm；CI 可继续使用 chart 静态测试和 artifact 校验。
+minikube 手册覆盖本地 PostgreSQL、Redis、SpiceDB/Authzed、可选 MinIO、Team Cloud Dashboard 和 Hermes CLI/Desktop 连接。
 
 ### offline_bundle
 
 ```bash
-scripts/team-cloud-offline-bundle.sh --manifest deploy/team-cloud/offline/manifest.yaml
-deploy/team-cloud/offline/install.sh --manifest deploy/team-cloud/offline/manifest.yaml
+scripts/team-cloud-offline-bundle.sh
 ```
 
-`offline_bundle` 安装必须包含 `deploy/team-cloud/offline/manifest.yaml`、镜像目录和 `checksums`。导入后先校验 manifest，再执行安装脚本，最后运行 foundation smoke。
+`offline_bundle` 安装必须包含 `team_cloud/Dockerfile`、`team_cloud/deploy/kubernetes/team-cloud-go.yaml`、release manual、minikube manual、可选镜像目录和 `SHA256SUMS`。导入后先校验 checksum，再按 Kubernetes manifest 安装，最后运行 foundation smoke。
 
 ## Preflight
 
 安装前必须确认：
 
-- `python_3_11`：本地 Python 版本与测试环境一致。
-- `container_runtime`：Docker、Compose 或 Kubernetes runtime 可用。
-- `ports_available`：本地 `8780`、`8781`、`18000`、`50051`、`19000`、`19001` 未被占用。
-- `secrets_present`：所有 `TEAM_CLOUD_*_FILE` 对应 secret 文件存在。
+- `go_toolchain`：本地 Go toolchain 可构建 `team_cloud`。
+- `container_runtime`：Docker 或 Kubernetes runtime 可用。
+- `ports_available`：本地 `8780`、`50051`、`5432`、`6379`、`9000` 未被占用。
+- `secrets_present`：所有 `TEAM_CLOUD_*` 对应 Kubernetes Secret/env 已准备。
 - `casdoor_redirect_urls`：浏览器访问域名、issuer 和 redirect URL 一致。
 - `spicedb_preshared_key`：SpiceDB key 与 Team API secret file 一致。
 - `minio_bucket_policy`：bucket、access key、secret key 和 lifecycle 配置已准备。

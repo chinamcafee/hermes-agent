@@ -1,6 +1,6 @@
 # 06. 云端数据管理与 MinIO 备份方案
 
-GA 产品必须把云端数据管理做成一等能力，而不是只提供数据库表和后台脚本。本方案中 PostgreSQL 保存 canonical data，MinIO 保存对象、导出包和个人记忆备份，SpiceDB 控制资源访问，Casdoor 控制登录身份。
+GA 产品必须把云端数据管理做成一等能力，而不是只提供数据库表和后台脚本。本方案中 PostgreSQL 保存 Team Cloud canonical data，MinIO/S3-compatible 只作为可选对象存储，SpiceDB 控制资源访问，Casdoor 控制登录身份。个人记忆和本地人格不进入 Team Cloud 云端管理面，由 Hermes CLI 本地 profile 和 `/cloud-backup memory|soul` 管理。
 
 ## 1. 管理对象
 
@@ -11,12 +11,13 @@ GA 产品必须把云端数据管理做成一等能力，而不是只提供数�
 - Members / Roles / Service Accounts。
 - Gateway External Identities。
 - Sessions / Messages / Tool Calls。
-- Personal Memory。
 - Team Shared Memory。
 - Memory Review Queue。
+- Team Parent Soul。
 - Documents / Knowledge Sources。
-- Personal Backup Policies。
-- Backup / Export / Restore Jobs。
+- Team Memory Backup Policies。
+- Team Parent Soul Backup Policies。
+- Team Memory / Team Parent Soul Backup / Restore Jobs。
 - API Tokens。
 - SpiceDB Permission Explorer。
 - Audit Logs。
@@ -52,13 +53,6 @@ agent_run_events
 - `session.export`：owner 或项目管理员，组织导出需 Admin。
 
 ## 3. 记忆管理
-
-Personal Memory 页面：
-
-- 成员只能默认看自己的 personal memory。
-- 支持搜索、编辑、删除、备份、恢复、导出。
-- 支持查看来源和版本 diff。
-- 支持暂停自动写入和设置保留策略。
 
 Team Shared Memory 页面：
 
@@ -99,16 +93,15 @@ org/{org_id}/documents/{document_id}/exports/{export_id}.zip
 - 文档权限通过 SpiceDB 继承 project/team。
 - 文档 chunk 可参与召回，但必须和 memory block 分开标注。
 
-## 5. MinIO 对象模型
+## 5. 可选对象存储模型
 
-桶：
+Team Cloud 的 MinIO/S3-compatible 对象存储不再是必备组件。未配置对象存储时，团队记忆和团队父人格备份仍可保存在 PostgreSQL backup job snapshot 中；配置对象存储后，备份对象上传到团队级 bucket。个人记忆和本地人格备份由 Hermes CLI 直接写入用户指定对象存储，不写入 Team Cloud manifest。
+
+Team Cloud bucket：
 
 ```text
-hermes-personal-backups
-hermes-org-exports
-hermes-attachments
-hermes-document-sources
-hermes-restore-staging
+hermes-team-memory-backups
+hermes-team-soul-backups
 ```
 
 统一 manifest：
@@ -137,53 +130,44 @@ create table object_manifests (
 对象 key：
 
 ```text
-org/{org_id}/member/{member_id}/personal-memory/{yyyy}/{mm}/{backup_id}.jsonl.enc
-org/{org_id}/exports/{export_id}/manifest.json
-org/{org_id}/attachments/{attachment_id}/blob
-org/{org_id}/documents/{document_id}/source/{version_id}.bin
-org/{org_id}/restore/{restore_job_id}/staging.jsonl.enc
+org/{org_id}/team-memory/{yyyy}/{mm}/{backup_id}.jsonl.enc
+org/{org_id}/team-soul/{yyyy}/{mm}/{backup_id}.json.enc
 ```
 
-## 6. 个人记忆定时备份
+## 6. 本地 memory/soul 定时备份
 
-成员可配置：
+个人记忆和本地人格定时备份属于 Hermes CLI 本地职责。成员在 CLI 中配置一次共用对象存储，再分别为 `memory` 和 `soul` 设置周期：
 
 ```text
-enabled
-cadence = daily | weekly | monthly
-include_archived = false
-include_deleted = false
-include_embeddings = false
-retention_count = 7 | 30 | custom
-encryption = org_managed | user_passphrase
-notification = email | in_app | webhook
+endpoint
+bucket
+region
+prefix
+access_key_env
+secret_key_env
+memory_cadence = hourly | daily | weekly | monthly | off
+soul_cadence = hourly | daily | weekly | monthly | off
 ```
 
 备份流程：
 
 ```text
-1. scheduler 找到 due backup policy。
-2. SpiceDB check backup.restore/read ownership。
-3. PostgreSQL repeatable read transaction 导出 memory_items + events manifest。
-4. 生成 JSONL + manifest。
-5. 加密并计算 checksum。
-6. 上传 MinIO。
-7. 写 object_manifests 和 backup_jobs。
-8. 写 audit event。
-9. 通知成员。
+1. 用户执行 `/cloud-backup config` 保存对象存储配置。
+2. 用户执行 `/cloud-backup memory schedule` 或 `/cloud-backup soul schedule` 创建 Hermes cron no-agent job。
+3. 用户也可以执行 `/cloud-backup memory backup` 或 `/cloud-backup soul backup` 手动触发。
+4. CLI 按 resource type 读取当前 profile 的 `memories/` 或 `SOUL.md`。
+5. 生成 `hermes-cloud-backup-memory-v1` 或 `hermes-cloud-backup-soul-v1` JSON。
+6. 通过 S3 Signature V4 上传到用户指定对象存储。
+7. `/cloud-backup memory history` 和 `/cloud-backup soul history` 只列对应 resource prefix 下的备份对象。
 ```
 
 恢复流程：
 
 ```text
-1. 成员选择备份包。
-2. Team API 生成 restore preview。
-3. 检查冲突：same checksum、same normalized_content、newer version。
-4. 用户选择 skip/merge/overwrite/archive-old。
-5. 写 restore job。
-6. staging -> memory_items。
-7. 重建 embedding。
-8. 写 memory_events 和 audit。
+1. 成员执行 `/cloud-backup memory restore <object-key>` 或 `/cloud-backup soul restore <object-key>`。
+2. CLI 下载并校验备份格式和 resource type。
+3. memory 备份恢复到当前 Hermes profile 的 `memories/` 目录；soul 备份恢复到当前 profile 的 `SOUL.md`。
+4. 恢复前应确认当前 `HERMES_HOME`，避免覆盖错误 profile。
 ```
 
 ## 7. 组织导出与删除
@@ -257,8 +241,8 @@ write final audit
 - Casdoor JWKS refresh failure。
 - outbox dead letter。
 - backup failure > 3 次。
-- MinIO checksum mismatch。
-- personal memory cross-member access attempt。
+- Optional object-store checksum mismatch。
+- Team Cloud personal memory endpoint access attempt。
 - destructive tool approval bypass attempt。
 
 ## 10. RPO/RTO
@@ -267,9 +251,9 @@ write final audit
 | --- | ---: | ---: | --- |
 | PostgreSQL | <= 15 分钟 | <= 4 小时 | WAL/PITR、每日全量、恢复演练 |
 | SpiceDB | <= 15 分钟 | <= 4 小时 | 关系快照 + PostgreSQL outbox 重放 |
-| MinIO | <= 1 小时 | <= 4 小时 | bucket replication 或定时 mirror |
+| Optional team-memory object store | <= 1 小时 | <= 4 小时 | bucket replication 或定时 mirror |
 | Casdoor 配置 | <= 1 小时 | <= 4 小时 | 配置导出、数据库备份 |
-| 个人备份 | 按用户 cadence | <= 4 小时 | MinIO object + manifest restore |
+| CLI 个人备份 | 按用户 cadence | <= 4 小时 | 用户自有 MinIO/S3 object restore |
 
 ## 11. GA 验收
 
@@ -277,5 +261,5 @@ write final audit
 - 备份包可下载、校验、恢复、删除。
 - 组织导出可在空环境回灌核心数据。
 - 删除请求有审批、执行、审计和失败重试。
-- MinIO 对象和 PostgreSQL manifest 无孤儿对象。
+- 配置对象存储时，团队记忆备份对象和 PostgreSQL manifest 无孤儿对象。
 - SpiceDB relationship 快照可重建授权状态。

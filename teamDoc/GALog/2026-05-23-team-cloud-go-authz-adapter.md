@@ -2,7 +2,7 @@
 
 ## 背景
 
-当前 `team_cloud_go/` 已提供本地 relationship/check API，但 GA 手册和设计文档仍要求云端团队协作具备可部署的授权服务侧能力。为避免把远程 SpiceDB/Authzed 接入留作上线后的非阻塞项，本轮新增 GTC-18/GTC-19。
+当前 `team_cloud/` 已提供本地 relationship/check API，但 GA 手册和设计文档仍要求云端团队协作具备可部署的授权服务侧能力。为避免把远程 SpiceDB/Authzed 接入留作上线后的非阻塞项，本轮新增 GTC-18/GTC-19。
 
 ## 执行计划
 
@@ -21,8 +21,8 @@
 - 15:43 CST：接入 org/member scope 守卫、高风险业务入口授权和 team_shared prefetch 授权过滤；局部测试通过。
 - 15:58 CST：新增 AES-GCM JSONL exporter、S3/MinIO path-style object store、backup manifest 回写和 restore preview 持久守卫；局部测试通过。
 - 16:18 CST：新增 enabled backup policy 调度 runner，服务端启动时按配置周期扫描并执行 scheduled personal backup。
-- 16:24 CST：调度 runner 补齐后重新完成最终复核：`go test ./...`、`go vet ./...`、`go build ./cmd/team-cloud-server`、Kubernetes YAML parse 和 `git diff --check -- team_cloud_go teamDoc` 均通过。
+- 16:24 CST：调度 runner 补齐后重新完成最终复核：`go test ./...`、`go vet ./...`、`go build ./cmd/team-cloud-server`、Kubernetes YAML parse 和 `git diff --check -- team_cloud teamDoc` 均通过。
 - 16:42 CST：二次 GA 审计发现 Go 服务未覆盖 release manual 中 PostgreSQL/pgvector embedding 检索承诺；新增 GTC-22/GTC-23。
 - 16:49 CST：按 TDD 增加 embedding 召回排序测试和 schema pgvector 测试，先确认失败，再实现 memory embedding、`query_embedding`、pgvector schema 和 cosine 排序；局部测试通过。
-- 16:58 CST：GTC-22 后重新运行 `go test ./...`、`go vet ./...`、`go build ./cmd/team-cloud-server`、Kubernetes YAML parse 和 `git diff --check -- team_cloud_go teamDoc`，验证通过后关闭 GTC-23。
-- 16:08 CST：完成 GTC-21 最终复核：`go test ./...`、`go vet ./...`、`go build ./cmd/team-cloud-server`、Kubernetes YAML parse 和 `git diff --check -- team_cloud_go teamDoc` 均通过。
+- 16:58 CST：GTC-22 后重新运行 `go test ./...`、`go vet ./...`、`go build ./cmd/team-cloud-server`、Kubernetes YAML parse 和 `git diff --check -- team_cloud teamDoc`，验证通过后关闭 GTC-23。
+- 16:08 CST：完成 GTC-21 最终复核：`go test ./...`、`go vet ./...`、`go build ./cmd/team-cloud-server`、Kubernetes YAML parse 和 `git diff --check -- team_cloud teamDoc` 均通过。

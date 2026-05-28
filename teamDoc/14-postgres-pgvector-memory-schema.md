@@ -4,7 +4,7 @@
 
 ```text
 identity tables
-  users / organizations / members / teams / projects
+  users / organizations / members / projects
 
 conversation tables
   cloud_sessions / cloud_messages / cloud_tool_calls
@@ -25,9 +25,11 @@ audit tables
 
 Go 服务端首次上线补充：
 
-- `team_cloud_go/` 使用 `tcg_*` 表承载首发服务端的组织、成员、记忆、review 和备份策略数据。
-- 由于 Python Team Cloud 未上线，Go 版不需要兼容 Python 版 UUID schema 的线上迁移；首次部署直接初始化 Go schema。
-- pgvector 详细 embedding schema 仍是长期目标，Go 版当前先提供 canonical memory CRUD、状态流转和 text prefetch，后续可在 `tcg_memory_items` 旁路扩展 embedding 表。
+- `team_cloud/` 使用 `tcg_*` 表承载首发服务端的团队空间、成员、记忆、review 和备份策略数据。
+- Go 首发版已退役独立 `tcg_teams` 工作组表；团队共享记忆以 `org_id` 作为团队级边界，`team_id` 仅作为历史兼容字段。
+- 2026-05-24 边界调整后，Team Cloud GA 主路径只管理 `team_shared`。`personal` 字段和查询模板保留为历史参考与兼容材料；个人记忆由 Hermes 本地 profile 和 CLI `/cloud-backup memory` 管理，本地人格由 `/cloud-backup soul` 管理。
+- 当前 Team Cloud 首次部署直接初始化 Go `tcg_*` schema；旧 Python schema 不再作为迁移来源。
+- pgvector 详细 embedding schema 仍是长期目标，Go 版当前在 `tcg_memory_items.embedding vector(1536)` 提供向量召回，并在同表保存 Dashboard 记忆治理所需的来源字段。
 
 ## 2. memory_items 字段约束
 
@@ -36,14 +38,17 @@ Go 服务端首次上线补充：
 | `org_id` | 所有查询必带 |
 | `scope` | 只允许 `personal` 或 `team_shared` |
 | `subject_member_id` | personal 必填，team_shared 为空 |
-| `team_id` | team_shared 必填 |
+| `team_id` | Go 首发版历史兼容字段，team_shared 不再要求必填 |
 | `status` | active/pending_review/archived/deleted/rejected |
 | `sensitivity` | normal/pii/secret/restricted |
+| `source_type` | team_shared 来源标签：`auto_extracted` 或 `admin_created` |
+| `source_member_id` | 自动抽取记忆的来源成员 |
+| `created_by_member_id` | 管理员创建记忆的创建者 |
 | `checksum_sha256` | 去重和备份校验 |
 
 ## 3. pgvector 查询模板
 
-Personal：
+Personal（历史参考，不属于 Team Cloud GA 主路径）：
 
 ```sql
 select mi.*, 1 - (me.embedding <=> :query_embedding) as similarity

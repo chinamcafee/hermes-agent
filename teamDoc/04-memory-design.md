@@ -247,20 +247,21 @@ score =
 
 ## 7. TeamMemoryProvider 工具
 
+> 2026-05-24 更新：Team Cloud GA 主路径只管理团队记忆。个人记忆不进入 Team Cloud，`team_memory_remember` 和 `team_memory_backup_now` 已退役；本地个人记忆备份统一使用 `/cloud-backup memory`。
+
 ```text
 team_memory_search
   query
-  scope = auto | personal | team_shared
+  scope = team_shared
   team_id?
   project_id?
   limit
 
-team_memory_remember
+team_memory_add
   content
-  scope
   memory_type
-  importance
   sensitivity?
+  source_type = admin_created
 
 team_memory_propose
   content
@@ -277,13 +278,9 @@ team_memory_promote
 team_memory_forget
   memory_id
   reason
-
-team_memory_backup_now
-  scope = personal
-  reason
 ```
 
-所有工具返回 JSON string，写操作必须先做 SpiceDB check 并写 audit。
+所有工具返回 JSON string，写操作必须先做权限 check 并写 audit。CLI 显式“创建/增加团队记忆”走 `team_memory_add`；自动抽取走 `team_memory_propose` 或服务端 review flow。
 
 ## 8. 防污染机制
 

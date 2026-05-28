@@ -12,14 +12,13 @@
 
 | 工件 | 用途 |
 | --- | --- |
-| `team_cloud/identity.py` | Team Cloud external identity resolver 的最小内存实现和 `team:<org>:<team>` session prefix 生成。 |
-| `team_cloud/api.py` | 注入式 `POST /v1/external-identities/resolve` 入口，并把 `include_personal` 传给 memory prefetch pipeline。 |
+| `team_cloud/internal/httpapi/server.go` | Team Cloud external identity / auth/session 相关 API 的 Go HTTP 入口。 |
 | `gateway/team_identity.py` | Gateway 侧 resolver client、配置解析、resolve 响应归一化和 session key prefix helper。 |
 | `gateway/session.py` | `SessionSource.team_context` 序列化和基于 org/team 的 session key 前缀隔离。 |
 | `gateway/run.py` | 在 `_handle_message()` 进入 agent 前解析团队身份，并把 `team_context` 传入 `_run_agent()`、proxy 和 `AIAgent(...)`。 |
-| `team_cloud/memory/prefetch.py` | shared group session 可通过 `include_personal=False` 禁用 personal partition 查询。 |
-| `team_cloud/memory/provider.py` | `TeamContext.personal_memory_enabled` 控制 provider prefetch 是否请求个人记忆。 |
-| `tests/team_cloud/test_external_identity_resolver.py` | 覆盖已绑定、未绑定和 shared session 禁用个人记忆。 |
+| `team_cloud/internal/httpapi/server.go` | prefetch 忽略 `include_personal`，当前 GA 主路径只返回 `team_shared`。 |
+| `agent/team_memory_provider.py` | `TeamContext.personal_memory_enabled` 固定不再启用云端 personal partition。 |
+| `team_cloud/internal/httpapi/cli_auth_test.go` | 覆盖成员登录/session API。 |
 | `tests/gateway/test_gateway_team_identity_resolver.py` | 覆盖 Gateway session key prefix、绑定提示、parse 兼容和 `AIAgent.team_context` 透传。 |
 | `teamDoc/GALog/2026-05-22-p2-16-gateway-identity-resolver.md` | TDD 红绿记录和回归证据。 |
 
@@ -31,8 +30,9 @@ Gateway identity resolver 支持 `config.yaml` 和环境变量两种启用方式
 gateway:
   team_identity:
     enabled: true
-    team_cloud_url: "http://127.0.0.1:8000"
-    service_token: "${HERMES_TEAM_CLOUD_SERVICE_TOKEN}"
+    team_cloud_url: "http://127.0.0.1:8780"
+    auth_mode: "member_token"
+    member_token: "${HERMES_TEAM_CLOUD_MEMBER_TOKEN}"
 ```
 
 环境变量：
@@ -41,8 +41,7 @@ gateway:
 | --- | --- |
 | `HERMES_GATEWAY_TEAM_IDENTITY_ENABLED` | 显式启停 resolver。 |
 | `HERMES_TEAM_CLOUD_URL` | Team Cloud base URL。 |
-| `HERMES_TEAM_CLOUD_SERVICE_TOKEN` | Gateway 调 Team Cloud resolve API 的 service token。 |
-| `TEAM_CLOUD_SERVICE_TOKEN` | service token 兼容别名。 |
+| `HERMES_TEAM_CLOUD_MEMBER_TOKEN` | Gateway 调 Team Cloud API 的成员级 session token、OIDC/JWT 或后续 PAT。 |
 
 如果配置缺失但显式启用，Gateway fail closed，返回团队身份解析失败提示，不创建 Agent。
 
@@ -59,8 +58,8 @@ gateway:
   - 不生成 session key sentinel，不创建 `AIAgent`。
 - shared multi-user session：
   - `personal_memory_enabled=False`。
-  - Team memory provider prefetch 请求带 `include_personal=false`。
-  - Prefetch pipeline 返回空 personal partition，只保留 team partition 查询。
+  - Team memory provider 不再请求云端 personal partition。
+  - Team Cloud prefetch 固定只返回 `team_shared`。
 - `_parse_session_key()` 会剥离 `team:<org>:<team>:` 前缀，保留现有平台路由解析能力。
 
 ## 非目标

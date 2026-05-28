@@ -325,6 +325,17 @@ def _parse_service_tier_config(raw: str) -> str | None:
     logger.warning("Unknown service_tier '%s', ignoring", raw)
     return None
 
+
+def _resolve_cli_team_context_for_agent() -> dict | None:
+    """Return Team Cloud identity context for CLI-created agents, if enabled."""
+    try:
+        from hermes_cli.team_cloud import resolve_cli_team_context
+
+        return resolve_cli_team_context()
+    except Exception as exc:
+        logger.warning("Failed to resolve Team Cloud CLI context: %s", exc)
+        return None
+
 def load_cli_config() -> Dict[str, Any]:
     """
     Load CLI configuration from config files.
@@ -380,6 +391,45 @@ def load_cli_config() -> Dict[str, Any]:
             "inactivity_timeout": 120,  # Auto-cleanup inactive browser sessions after 2 min
             "record_sessions": False,  # Auto-record browser sessions as WebM videos
             "engine": "auto",  # Browser engine: auto (Chrome), lightpanda, chrome
+        },
+        "team_cloud": {
+            "enabled": False,
+            "url": "",
+            "default_org_id": "",
+            "default_team_id": "",
+            "default_project_id": "",
+            "default_member_id": "",
+            "token_env": "HERMES_TEAM_CLOUD_SESSION_TOKEN",
+            "circuit_breaker": {
+                "mode": "auto",
+                "state": "closed",
+                "failure_count": 0,
+                "failure_threshold": 3,
+                "recovery_after_seconds": 60,
+                "opened_until": "",
+                "last_error": "",
+            },
+        },
+        "cloud_backup": {
+            "enabled": False,
+            "endpoint": "",
+            "bucket": "hermes-personal-cloud-backups",
+            "region": "us-east-1",
+            "prefix": "profiles",
+            "access_key_env": "HERMES_CLOUD_BACKUP_MINIO_ACCESS_KEY",
+            "secret_key_env": "HERMES_CLOUD_BACKUP_MINIO_SECRET_KEY",
+            "schedules": {
+                "memory": "off",
+                "soul": "off",
+            },
+            "cron_job_ids": {
+                "memory": "",
+                "soul": "",
+            },
+            "last_backup_keys": {
+                "memory": "",
+                "soul": "",
+            },
         },
         "compression": {
             "enabled": True,      # Auto-compress when approaching context limit
@@ -3418,7 +3468,24 @@ class HermesCLI:
             "session_api_calls": 0,
             "compressions": 0,
             "active_background_tasks": 0,
+            "team_cloud_label": "",
+            "team_cloud_mode": "local",
         }
+
+        try:
+            now = time.monotonic()
+            cached = getattr(self, "_team_status_bar_cache", None)
+            if not cached or (now - cached[0]) > 2.0:
+                from hermes_cli.team_cloud import team_cli_status_label
+
+                cached = (now, team_cli_status_label())
+                self._team_status_bar_cache = cached
+            team_status = cached[1]
+            snapshot["team_cloud_label"] = str(team_status.get("label") or "")
+            snapshot["team_cloud_mode"] = str(team_status.get("mode") or "local")
+        except Exception:
+            snapshot["team_cloud_label"] = ""
+            snapshot["team_cloud_mode"] = "local"
 
         # Count live /background tasks. The dict entry is removed in the
         # task thread's finally block, so len() reflects truly-running tasks.
@@ -3657,11 +3724,19 @@ class HermesCLI:
             yolo_active = bool(os.getenv("HERMES_YOLO_MODE"))
             if width < 52:
                 text = f"⚕ {snapshot['model_short']} · {duration_label}"
+                if snapshot.get("team_cloud_mode") == "team":
+                    text += " · Team"
+                elif snapshot.get("team_cloud_mode") == "paused":
+                    text += " · Team paused"
                 if yolo_active:
                     text += " · ⚠ YOLO"
                 return self._trim_status_bar_text(text, width)
             if width < 76:
                 parts = [f"⚕ {snapshot['model_short']}", percent_label]
+                if snapshot.get("team_cloud_mode") == "team":
+                    parts.append("Team")
+                elif snapshot.get("team_cloud_mode") == "paused":
+                    parts.append("Team paused")
                 compressions = snapshot.get("compressions", 0)
                 if compressions:
                     parts.append(f"🗜️ {compressions}")
@@ -3682,6 +3757,9 @@ class HermesCLI:
 
             compressions = snapshot.get("compressions", 0)
             parts = [f"⚕ {snapshot['model_short']}", context_label, percent_label]
+            team_label = snapshot.get("team_cloud_label")
+            if team_label and team_label != "Local":
+                parts.append(str(team_label))
             if compressions:
                 parts.append(f"🗜️ {compressions}")
             bg_count = snapshot.get("active_background_tasks", 0)
@@ -3718,6 +3796,10 @@ class HermesCLI:
                     ("class:status-bar-dim", " · "),
                     ("class:status-bar-dim", duration_label),
                 ]
+                if snapshot.get("team_cloud_mode") == "team":
+                    frags.extend([("class:status-bar-dim", " · "), ("class:status-bar-strong", "Team")])
+                elif snapshot.get("team_cloud_mode") == "paused":
+                    frags.extend([("class:status-bar-dim", " · "), ("class:status-bar-warn", "Team paused")])
                 if yolo_active:
                     frags.append(("class:status-bar-dim", " · "))
                     frags.append(("class:status-bar-yolo", "⚠ YOLO"))
@@ -3734,6 +3816,12 @@ class HermesCLI:
                         ("class:status-bar-dim", " · "),
                         (self._status_bar_context_style(percent), percent_label),
                     ]
+                    if snapshot.get("team_cloud_mode") == "team":
+                        frags.append(("class:status-bar-dim", " · "))
+                        frags.append(("class:status-bar-strong", "Team"))
+                    elif snapshot.get("team_cloud_mode") == "paused":
+                        frags.append(("class:status-bar-dim", " · "))
+                        frags.append(("class:status-bar-warn", "Team paused"))
                     if compressions:
                         frags.append(("class:status-bar-dim", " · "))
                         frags.append((self._compression_count_style(compressions), f"🗜️ {compressions}"))
@@ -3769,6 +3857,13 @@ class HermesCLI:
                         ("class:status-bar-dim", " "),
                         (bar_style, percent_label),
                     ]
+                    team_label = snapshot.get("team_cloud_label")
+                    if team_label and team_label != "Local":
+                        frags.append(("class:status-bar-dim", " │ "))
+                        frags.append((
+                            "class:status-bar-warn" if snapshot.get("team_cloud_mode") == "paused" else "class:status-bar-strong",
+                            str(team_label),
+                        ))
                     if compressions:
                         frags.append(("class:status-bar-dim", " │ "))
                         frags.append((self._compression_count_style(compressions), f"🗜️ {compressions}"))
@@ -4842,6 +4937,7 @@ class HermesCLI:
                 openrouter_min_coding_score=self._openrouter_min_coding_score,
                 session_id=self.session_id,
                 platform="cli",
+                team_context=_resolve_cli_team_context_for_agent(),
                 session_db=self._session_db,
                 clarify_callback=self._clarify_callback,
                 reasoning_callback=self._current_reasoning_callback(),
@@ -8245,6 +8341,18 @@ class HermesCLI:
             self._handle_codex_runtime(cmd_original)
         elif canonical == "gquota":
             self._handle_gquota_command(cmd_original)
+        elif canonical == "team":
+            from hermes_cli.team_cloud import handle_team_slash
+
+            handle_team_slash(cmd_original, print_fn=_cprint)
+        elif canonical == "cloud-backup":
+            from hermes_cli.cloud_backup import handle_cloud_backup_slash
+
+            handle_cloud_backup_slash(cmd_original, print_fn=_cprint)
+        elif canonical == "soul":
+            from hermes_cli.team_soul import handle_soul_slash
+
+            handle_soul_slash(cmd_original, print_fn=_cprint)
 
         elif canonical == "personality":
             # Use original case (handler lowercases the personality name itself)
@@ -8593,6 +8701,7 @@ class HermesCLI:
                     verbose_logging=False,
                     session_id=task_id,
                     platform="cli",
+                    team_context=_resolve_cli_team_context_for_agent(),
                     session_db=self._session_db,
                     reasoning_config=self.reasoning_config,
                     service_tier=self.service_tier,

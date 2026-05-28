@@ -19,21 +19,19 @@
 
 ### 1. Team Cloud 骨架
 
-1. 建立 `team_cloud_go/` Go module。
+1. 建立 `team_cloud/` Go module。
 2. 建立 `team-cloud-server`、HTTP API、PostgreSQL migration、test fixtures。
 3. 定义配置加载优先级：env、yaml、secret file。
 4. 建立 request context：`request_id/org_id/member_id/actor_type`。
 5. 加入 structured logging 和 health endpoints。
 
-### 2. 本地 compose 栈
+### 2. 本地 Kubernetes 验证栈
 
-1. 创建 `deploy/team-cloud/compose.yaml`。
-2. 加入 Casdoor service 和初始化配置。
-3. 加入 SpiceDB service、pre-shared key、schema load job。
-4. 加入 PostgreSQL，启用 pgvector extension。
-5. 加入 MinIO，初始化 buckets。
-6. 加入 Go Team API、worker、web shell。
-7. 写 smoke test：登录、check permission、pgvector query、MinIO upload。
+1. 使用 `team_cloud/deploy/kubernetes/team-cloud-go.yaml` 作为当前服务端部署入口。
+2. 在 minikube 中部署 PostgreSQL + pgvector、Redis、SpiceDB/Authzed compatible API 和可选 MinIO。
+3. 使用 Kubernetes Secret/env 注入 Team Cloud 连接和鉴权配置。
+4. 构建 `team_cloud/` Go 服务镜像并部署内置 Dashboard。
+5. 写 smoke test：bootstrap、登录、check permission、pgvector query、可选 MinIO upload。
 
 ### 3. Casdoor 接入
 

@@ -88,7 +88,16 @@ def build_system_prompt_parts(agent: Any, system_message: Optional[str] = None) 
     # cwd project instructions disabled.
     _soul_loaded = False
     if agent.load_soul_identity or not agent.skip_context_files:
-        _soul_content = _r.load_soul_md()
+        _soul_content = None
+        if getattr(agent, "team_context", None):
+            try:
+                from hermes_cli.team_soul import effective_soul_for_runtime
+
+                _soul_content = effective_soul_for_runtime(agent)
+            except Exception:
+                _soul_content = None
+        if not _soul_content:
+            _soul_content = _r.load_soul_md()
         if _soul_content:
             stable_parts.append(_soul_content)
             _soul_loaded = True

@@ -18,7 +18,7 @@
 2. `GET /v1/memory`：支持 scope/status/type/sensitivity/source 过滤。
 3. `POST /v1/memory`：写 personal 或 team candidate。
 4. `PATCH /v1/memory/{id}`：版本更新和 diff 事件。
-5. `DELETE /v1/memory/{id}`：soft delete，hard delete 交给治理 worker。
+5. `POST /v1/memory/{id}/disable`：停用记忆，落库为 `archived`；Go Dashboard 记忆治理中 `DELETE /v1/memory/{id}` 表示硬删除。
 6. `POST /v1/memory/{id}/promote`：personal -> team_shared candidate。
 7. `GET /v1/memory/review`：团队共享记忆审核队列。
 8. `POST /v1/memory/observations`：Hermes turn 观察写入。
@@ -49,7 +49,7 @@
 1. `AIAgent.__init__` 增加 `team_context`，默认 None。
 2. `agent/agent_init.py` 将 `team_context` 传给 memory provider。
 3. API Server 增加可信 identity headers。
-4. API Server 只在 Team Cloud service token 校验后接受 identity headers。
+4. API Server 只在 Team Cloud 成员级 token、OIDC/JWT 或后续 PAT 校验后接受 identity headers。
 5. Gateway 进入 Agent 前调用 `/v1/external-identities/resolve`。
 6. 未绑定平台用户返回绑定提示。
 7. session key 增加 org/team 前缀，避免跨团队碰撞。
@@ -73,4 +73,3 @@
 - team_shared 默认进入 review。
 - Gateway 至少一个平台可绑定并进入团队会话。
 - P95 prefetch 有基线并写入追踪文档。
-

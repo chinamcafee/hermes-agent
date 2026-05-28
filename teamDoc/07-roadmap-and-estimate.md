@@ -1,14 +1,14 @@
 # 07. GA 路线图与工作量估算
 
-本路线图以 GA 产品交付为目标，不再把 PoC/MVP 作为最终口径。可以做内部里程碑，但每个阶段都必须沿用 `Casdoor + SpiceDB + PostgreSQL/pgvector + MinIO` 的最终架构，避免后续推倒重来。
+本路线图以 GA 产品交付为目标，不再把 PoC/MVP 作为最终口径。可以做内部里程碑，但每个阶段都必须沿用 `Casdoor + SpiceDB + PostgreSQL/pgvector + 可选 MinIO/S3-compatible` 的最终架构，避免后续推倒重来。
 
 ## 1. 总体估算
 
 | 阶段 | 时间 | 工作量 | 目标 |
 | --- | ---: | ---: | --- |
 | Phase 0 架构冻结 | 2-3 周 | 8-12 人周 | 技术栈、schema、权限模型、GA 验收冻结 |
-| Phase 1 平台基础 | 6-8 周 | 35-50 人周 | Casdoor、SpiceDB、PostgreSQL、MinIO、Team API、基础管理台 |
-| Phase 2 记忆与 Hermes 集成 | 8-10 周 | 45-65 人周 | TeamMemoryProvider、双层记忆、pgvector、Gateway/API/Web 接入 |
+| Phase 1 平台基础 | 6-8 周 | 35-50 人周 | Casdoor、SpiceDB、PostgreSQL、可选对象存储、Team API、基础管理台 |
+| Phase 2 记忆与 Hermes 集成 | 8-10 周 | 45-65 人周 | TeamMemoryProvider、团队记忆、CLI 本地个人记忆边界、pgvector、Gateway/API/Web 接入 |
 | Phase 3 数据治理与权限硬化 | 6-8 周 | 35-50 人周 | 审计、备份恢复、导出删除、工具权限、权限解释 |
 | Phase 4 Beta 验证 | 6-8 周 | 25-40 人周 | 私有化部署、压测、安全测试、迁移、可观测性 |
 | Phase 5 GA 发布 | 4-6 周 | 17-23 人周 | 文档、Runbook、升级、发布包、最终验收 |
@@ -19,7 +19,7 @@
 
 | 角色 | 人数 | 主要职责 |
 | --- | ---: | --- |
-| 后端/平台工程师 | 2 | Team API、PostgreSQL schema、Casdoor、SpiceDB、MinIO |
+| 后端/平台工程师 | 2 | Team API、PostgreSQL schema、Casdoor、SpiceDB、可选对象存储 |
 | Hermes/runtime 工程师 | 1-2 | TeamMemoryProvider、Gateway/API Server patch、tool policy hook |
 | 前端/产品工程师 | 1-2 | Team Web Console、权限 UI、记忆管理、备份恢复 |
 | DevOps/SRE | 1 | compose/helm、备份恢复、观测、发布包 |
@@ -36,21 +36,21 @@
 
 - ADR：Casdoor 作为 AuthN，SpiceDB 作为 AuthZ。
 - ADR：PostgreSQL/pgvector 作为 canonical memory。
-- ADR：MinIO 作为个人备份和对象存储。
+- ADR：MinIO/S3-compatible 作为可选对象存储，CLI 个人备份目标由用户配置。
 - SpiceDB schema v0。
 - PostgreSQL schema v0。
-- MinIO bucket/key/manifest 规范。
+- 可选对象存储 bucket/key/manifest 规范。
 - Hermes 改动边界清单。
 - GA 验收标准和权限矩阵。
 
 验收：
 
-- 本地 compose 可启动 Casdoor、SpiceDB、PostgreSQL+pgvector、MinIO。
+- 本地 compose/minikube 可启动 Casdoor、SpiceDB、PostgreSQL+pgvector，并可选启动 MinIO。
 - Web 登录能拿到 Casdoor token。
 - Team API 能校验 JWT。
 - Team API 能写入一条 SpiceDB relationship 并 check。
 - PostgreSQL 能执行一次 pgvector 查询。
-- MinIO 能上传和校验一个加密备份对象。
+- 启用对象存储时能上传和校验一个团队记忆备份对象。
 
 ## 4. Phase 1：平台基础
 
@@ -96,9 +96,9 @@
 
 验收：
 
-- Alice personal memory 不会被 Bob 召回。
+- Team Cloud 不召回 Alice personal memory；个人记忆只在本地 profile 生效。
 - Team shared memory 只在授权 team/project 内召回。
-- Agent 回答能同时使用 personal 和 team_shared。
+- Agent 回答能同时使用本地 personal 和 Team Cloud team_shared。
 - 团队共享记忆默认审核后发布。
 - Gateway 至少一个平台完成绑定和对话。
 
@@ -110,8 +110,8 @@
 
 - TeamToolPolicyHook。
 - 工具风险分级和审批策略。
-- Personal backup policy。
-- MinIO 备份、下载、恢复。
+- CLI `/cloud-backup memory|soul` 本地个人记忆和本地人格备份配置、下载、恢复。
+- Team Cloud 团队记忆和团队父人格备份、下载、恢复。
 - 组织导出。
 - 删除请求和 hard delete worker。
 - SpiceDB permission explorer。
@@ -122,7 +122,7 @@
 验收：
 
 - 高危工具必须 SpiceDB allow + approval。
-- 个人备份可按计划生成并恢复。
+- CLI 个人备份可按计划生成并恢复，Team Cloud 团队记忆备份可按策略生成并恢复。
 - 组织导出可在空环境回灌核心数据。
 - 删除请求可追踪、可重试、可审计。
 - break-glass 访问会通知和审计。
@@ -167,7 +167,7 @@
 验收：
 
 - 新环境 1 小时内可完成基础部署。
-- 管理员可按文档配置 Casdoor、SpiceDB、PostgreSQL、MinIO。
+- 管理员可按文档配置 Casdoor、SpiceDB、PostgreSQL，并可选配置 MinIO/S3-compatible 团队记忆备份。
 - 备份恢复 Runbook 通过演练。
 - 所有 GA 验收项签字。
 
@@ -180,7 +180,7 @@
 | PostgreSQL/pgvector 记忆库和迁移 | 18-28 |
 | TeamMemoryProvider 和 Hermes runtime 集成 | 16-24 |
 | Gateway/API/Web chat 集成 | 12-18 |
-| MinIO 备份、导出、恢复 | 14-22 |
+| 对象存储备份、导出、恢复 | 14-22 |
 | Team Web Console | 24-34 |
 | 工具权限和审批 | 10-16 |
 | 审计、观测、配额、成本 | 12-18 |
@@ -189,7 +189,7 @@
 
 ## 10. 关键依赖
 
-- 确认 MinIO AGPL-3.0 对目标商业化和私有化模式的影响。
+- 如果选用 MinIO，确认 AGPL-3.0 对目标商业化和私有化模式的影响；也可选其他 S3-compatible 服务。
 - 确认 Casdoor 组织/应用/SCIM 使用方式和企业 IdP 集成范围。
 - 确认 SpiceDB 部署拓扑、datastore 和备份策略。
 - 确认默认 embedding provider、维度、模型切换策略。

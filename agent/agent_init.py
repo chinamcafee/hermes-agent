@@ -71,6 +71,106 @@ def _ra():
     return run_agent
 
 
+def _build_memory_provider_init_kwargs(agent: Any, platform: Optional[str]) -> Dict[str, Any]:
+    """Build the shared initialization scope for external memory runtimes."""
+    init_kwargs: Dict[str, Any] = {
+        "session_id": agent.session_id,
+        "platform": platform or "cli",
+        "hermes_home": str(get_hermes_home()),
+        "agent_context": "primary",
+    }
+    if agent._session_db:
+        try:
+            session_title = agent._session_db.get_session_title(agent.session_id)
+            if session_title:
+                init_kwargs["session_title"] = session_title
+        except Exception:
+            pass
+    if agent._user_id:
+        init_kwargs["user_id"] = agent._user_id
+    if agent._user_name:
+        init_kwargs["user_name"] = agent._user_name
+    if agent._chat_id:
+        init_kwargs["chat_id"] = agent._chat_id
+    if agent._chat_name:
+        init_kwargs["chat_name"] = agent._chat_name
+    if agent._chat_type:
+        init_kwargs["chat_type"] = agent._chat_type
+    if agent._thread_id:
+        init_kwargs["thread_id"] = agent._thread_id
+    if agent._gateway_session_key:
+        init_kwargs["gateway_session_key"] = agent._gateway_session_key
+    if agent.team_context is not None:
+        init_kwargs["team_context"] = agent.team_context
+    try:
+        from hermes_cli.profiles import get_active_profile_name
+
+        profile = get_active_profile_name()
+        init_kwargs["agent_identity"] = profile
+        init_kwargs["agent_workspace"] = "hermes"
+    except Exception:
+        pass
+    return init_kwargs
+
+
+def _should_inject_memory_provider_tools(agent: Any) -> bool:
+    """Return True when memory tools are present in the effective tool surface."""
+    if agent.enabled_toolsets is None:
+        return True
+    if "memory" in agent.enabled_toolsets:
+        return True
+    return bool(agent.valid_tool_names and "memory" in agent.valid_tool_names)
+
+
+def _maybe_activate_team_cloud_memory_provider(
+    agent: Any,
+    *,
+    agent_config: Dict[str, Any],
+    platform: Optional[str],
+) -> None:
+    """Enable the first-party Team Cloud memory provider for CLI team mode."""
+    if agent.team_context is None:
+        return
+    team_config = agent_config.get("team_cloud", {})
+    if not isinstance(team_config, dict) or not team_config.get("enabled"):
+        return
+    team_cloud_url = str(team_config.get("url") or "").strip()
+    if not team_cloud_url:
+        return
+    try:
+        from hermes_cli.team_cloud import team_cloud_token
+        from agent.memory_manager import MemoryManager as _MemoryManager
+        from agent.team_memory_provider import (
+            TeamMemoryProvider,
+            TeamMemoryProviderConfig,
+            team_context_from_mapping,
+        )
+
+        token = team_cloud_token(config=agent_config)
+        context = team_context_from_mapping(agent.team_context)
+        if not token or context is None:
+            return
+        if agent._memory_manager is None:
+            agent._memory_manager = _MemoryManager()
+        if agent._memory_manager.get_provider("team_cloud") is not None:
+            return
+        provider = TeamMemoryProvider(
+            config=TeamMemoryProviderConfig(
+                team_cloud_url=team_cloud_url,
+                service_token=token,
+                team_context=context,
+            )
+        )
+        if not provider.is_available():
+            return
+        agent._memory_manager.add_provider(provider)
+        if agent._memory_manager.get_provider("team_cloud") is provider:
+            provider.initialize(**_build_memory_provider_init_kwargs(agent, platform))
+            _ra().logger.info("Team Cloud memory provider activated")
+    except Exception as exc:
+        _ra().logger.warning("Team Cloud memory provider init failed: %s", exc)
+
+
 def _normalized_custom_base_url(value: Any) -> str:
     if not isinstance(value, str):
         return ""
@@ -1098,48 +1198,9 @@ def init_agent(
                 if _mp and _mp.is_available():
                     agent._memory_manager.add_provider(_mp)
                 if agent._memory_manager.providers:
-                    _init_kwargs = {
-                        "session_id": agent.session_id,
-                        "platform": platform or "cli",
-                        "hermes_home": str(get_hermes_home()),
-                        "agent_context": "primary",
-                    }
-                    # Thread session title for memory provider scoping
-                    # (e.g. honcho uses this to derive chat-scoped session keys)
-                    if agent._session_db:
-                        try:
-                            _st = agent._session_db.get_session_title(agent.session_id)
-                            if _st:
-                                _init_kwargs["session_title"] = _st
-                        except Exception:
-                            pass
-                    # Thread gateway user identity for per-user memory scoping
-                    if agent._user_id:
-                        _init_kwargs["user_id"] = agent._user_id
-                    if agent._user_name:
-                        _init_kwargs["user_name"] = agent._user_name
-                    if agent._chat_id:
-                        _init_kwargs["chat_id"] = agent._chat_id
-                    if agent._chat_name:
-                        _init_kwargs["chat_name"] = agent._chat_name
-                    if agent._chat_type:
-                        _init_kwargs["chat_type"] = agent._chat_type
-                    if agent._thread_id:
-                        _init_kwargs["thread_id"] = agent._thread_id
-                    # Thread gateway session key for stable per-chat Honcho session isolation
-                    if agent._gateway_session_key:
-                        _init_kwargs["gateway_session_key"] = agent._gateway_session_key
-                    if agent.team_context is not None:
-                        _init_kwargs["team_context"] = agent.team_context
-                    # Profile identity for per-profile provider scoping
-                    try:
-                        from hermes_cli.profiles import get_active_profile_name
-                        _profile = get_active_profile_name()
-                        _init_kwargs["agent_identity"] = _profile
-                        _init_kwargs["agent_workspace"] = "hermes"
-                    except Exception:
-                        pass
-                    agent._memory_manager.initialize_all(**_init_kwargs)
+                    agent._memory_manager.initialize_all(
+                        **_build_memory_provider_init_kwargs(agent, platform)
+                    )
                     _ra().logger.info("Memory provider '%s' activated", _mem_provider_name)
                 else:
                     _ra().logger.debug("Memory provider '%s' not found or not available", _mem_provider_name)
@@ -1148,6 +1209,12 @@ def init_agent(
             _ra().logger.warning("Memory provider plugin init failed: %s", _mpe)
             agent._memory_manager = None
 
+        _maybe_activate_team_cloud_memory_provider(
+            agent,
+            agent_config=_agent_cfg,
+            platform=platform,
+        )
+
     # Inject memory provider tool schemas into the tool surface.
     # Skip tools whose names already exist (plugins may register the
     # same tools via ctx.register_tool(), which lands in agent.tools
@@ -1155,17 +1222,16 @@ def init_agent(
     # 400 errors on providers that enforce unique names (e.g. Xiaomi
     # MiMo via Nous Portal).
     #
-    # Respect the platform's enabled_toolsets configuration (#5544):
-    #   enabled_toolsets is None        → no filter, inject (backward compat)
-    #   "memory" in enabled_toolsets    → user opted in, inject
-    #   otherwise (incl. [])            → user excluded memory, skip injection
+    # Respect the platform's effective tool surface (#5544):
+    #   enabled_toolsets is None                  → no filter, inject
+    #   "memory" in enabled_toolsets              → user opted in, inject
+    #   "memory" already resolved in valid tools  → composite toolset includes it
+    #   otherwise (incl. [])                      → user excluded memory, skip
     #
     # Without this gate, `platform_toolsets: telegram: []` still leaks memory
     # provider tools (fact_store, etc.) into the tool surface — a 10x latency
     # penalty on local models and a frequent trigger of tool-call loops.
-    if agent._memory_manager and agent.tools is not None and (
-        agent.enabled_toolsets is None or "memory" in agent.enabled_toolsets
-    ):
+    if agent._memory_manager and agent.tools is not None and _should_inject_memory_provider_tools(agent):
         _existing_tool_names = {
             t.get("function", {}).get("name")
             for t in agent.tools

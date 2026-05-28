@@ -1,5 +1,7 @@
 # P2-15 API Server identity headers 工作日志
 
+> 2026-05-24 更新：Team Cloud Go 已取消部署级 service token。本文记录的是 P2 阶段 API Server trusted headers 的历史实现；后续 CLI / Gateway / API Server 身份透传应改用成员级 token、OIDC/JWT 或 PAT。
+
 ## 目标
 
 - 按 `GAStep` 顺序推进 P2-15。

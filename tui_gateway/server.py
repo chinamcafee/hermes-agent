@@ -1933,6 +1933,15 @@ def _parse_tui_skills_env() -> list[str]:
     return skills
 
 
+def _resolve_tui_team_context() -> dict | None:
+    try:
+        from hermes_cli.team_cloud import resolve_cli_team_context
+
+        return resolve_cli_team_context()
+    except Exception:
+        return None
+
+
 def _background_agent_kwargs(agent, task_id: str) -> dict:
     cfg = _load_cfg()
 
@@ -1966,6 +1975,7 @@ def _background_agent_kwargs(agent, task_id: str) -> dict:
         "service_tier": getattr(agent, "service_tier", None) or _load_service_tier(),
         "request_overrides": dict(getattr(agent, "request_overrides", {}) or {}),
         "platform": "tui",
+        "team_context": getattr(agent, "team_context", None) or _resolve_tui_team_context(),
         "session_db": _get_db(),
         "fallback_model": getattr(agent, "_fallback_model", None),
     }
@@ -2039,6 +2049,7 @@ def _make_agent(sid: str, key: str, session_id: str | None = None):
         enabled_toolsets=_load_enabled_toolsets(),
         platform="tui",
         session_id=session_id or key,
+        team_context=_resolve_tui_team_context(),
         session_db=_get_db(),
         ephemeral_system_prompt=system_prompt or None,
         checkpoints_enabled=is_truthy_value(os.environ.get("HERMES_TUI_CHECKPOINTS")),
@@ -5643,6 +5654,9 @@ def _mirror_slash_side_effects(sid: str, session: dict, command: str) -> str:
                 agent.service_tier = "priority"
             elif mode in {"normal", "off"}:
                 agent.service_tier = None
+            _emit("session.info", sid, _session_info(agent))
+        elif name == "team" and agent:
+            agent.team_context = _resolve_tui_team_context()
             _emit("session.info", sid, _session_info(agent))
         elif name == "reload-mcp" and agent and hasattr(agent, "reload_mcp_tools"):
             agent.reload_mcp_tools()

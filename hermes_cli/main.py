@@ -6083,6 +6083,34 @@ def cmd_status(args):
     show_status(args)
 
 
+def cmd_team(args):
+    """Manage Team Cloud connection and member login state."""
+    from hermes_cli.team_cloud import cmd_team as _cmd_team
+
+    _cmd_team(args)
+
+
+def cmd_cloud_backup(args):
+    """Manage local memory and soul cloud backup to MinIO/S3."""
+    from hermes_cli.cloud_backup import cmd_cloud_backup as _cmd_cloud_backup
+
+    _cmd_cloud_backup(args)
+
+
+def cmd_soul(args):
+    """Show team parent, local, and effective soul state."""
+    from hermes_cli.team_soul import handle_soul_slash
+
+    parts = ["/soul"]
+    action = getattr(args, "soul_action", None)
+    if action:
+        parts.append(action)
+    target = getattr(args, "target", None)
+    if target:
+        parts.append(target)
+    handle_soul_slash(" ".join(parts))
+
+
 def cmd_cron(args):
     """Cron job management."""
     from hermes_cli.cron import cron_command
@@ -10656,7 +10684,7 @@ _BUILTIN_SUBCOMMANDS = frozenset(
         "kanban", "login", "logout", "logs", "lsp", "mcp", "memory", "migrate",
         "model", "pairing", "plugins", "portal", "postinstall", "profile", "proxy",
         "send", "sessions", "setup",
-        "skills", "slack", "status", "tools", "uninstall", "update",
+        "skills", "slack", "status", "team", "tools", "uninstall", "update",
         "version", "webhook", "whatsapp", "chat", "secrets",
         # Help-ish invocations — plugin commands not being listed in
         # top-level --help is an acceptable trade-off for skipping an
@@ -11649,6 +11677,96 @@ def main():
         "--deep", action="store_true", help="Run deep checks (may take longer)"
     )
     status_parser.set_defaults(func=cmd_status)
+
+    # =========================================================================
+    # team command
+    # =========================================================================
+    team_parser = subparsers.add_parser(
+        "team",
+        help="Manage Team Cloud connection",
+        description="Configure Hermes CLI to connect to Team Cloud and login as a team member",
+    )
+    team_subparsers = team_parser.add_subparsers(dest="team_action")
+
+    team_connect = team_subparsers.add_parser("connect", help="Set Team Cloud server URL")
+    team_connect.add_argument("url", help="Team Cloud base URL, e.g. http://127.0.0.1:8780")
+
+    team_login = team_subparsers.add_parser("login", help="Login as a Team Cloud member")
+    team_login.add_argument("--org", required=True, help="Organization/team slug")
+    team_login.add_argument("--user", required=True, help="Member user ID")
+    team_login.add_argument("--password", help="Member password; prompts securely when omitted")
+    team_login.add_argument("--team", default="", help="Team ID; defaults to --org")
+    team_login.add_argument("--project", default="", help="Optional project context")
+
+    team_subparsers.add_parser("status", help="Show local and remote Team Cloud status")
+
+    team_use = team_subparsers.add_parser("use", help="Select default Team Cloud context")
+    team_use.add_argument("--org", required=True, help="Organization/team slug")
+    team_use.add_argument("--team", default="", help="Team ID; defaults to --org")
+    team_use.add_argument("--project", default="", help="Optional project context")
+    team_use.add_argument("--member", default="", help="Optional member ID override")
+
+    team_subparsers.add_parser("off", help="Disable Team Cloud mode locally")
+    team_subparsers.add_parser("logout", help="Remove local Team Cloud session token")
+
+    team_token = team_subparsers.add_parser("token", help="Manage local Team Cloud session token")
+    token_subparsers = team_token.add_subparsers(dest="token_action")
+    token_set = token_subparsers.add_parser("set", help="Store a session token manually")
+    token_set.add_argument("token", help="Session token returned by Team Cloud")
+
+    team_breaker = team_subparsers.add_parser("breaker", help="Control Team Cloud API circuit breaker")
+    breaker_subparsers = team_breaker.add_subparsers(dest="breaker_action")
+    breaker_subparsers.add_parser("status", help="Show breaker state")
+    breaker_subparsers.add_parser("open", help="Manually pause Team Cloud API calls")
+    breaker_subparsers.add_parser("close", help="Manually resume Team Cloud API calls")
+    breaker_subparsers.add_parser("auto", help="Return breaker to automatic mode")
+
+    team_parser.set_defaults(func=cmd_team)
+
+    # =========================================================================
+    # cloud-backup command
+    # =========================================================================
+    cloud_backup_parser = subparsers.add_parser(
+        "cloud-backup",
+        help="Back up local memory and soul to MinIO/S3",
+        description="Configure, schedule, run, list, and restore profile-scoped memory and soul backups.",
+    )
+    cloud_backup_subparsers = cloud_backup_parser.add_subparsers(dest="cloud_backup_action")
+    cloud_backup_subparsers.add_parser("status", help="Show cloud backup configuration")
+    cb_config = cloud_backup_subparsers.add_parser("config", help="Configure MinIO/S3 target")
+    cb_config.add_argument("--endpoint", required=True, help="MinIO/S3 endpoint, e.g. http://127.0.0.1:9000")
+    cb_config.add_argument("--bucket", required=True, help="Bucket name")
+    cb_config.add_argument("--region", default="us-east-1", help="S3 signing region")
+    cb_config.add_argument("--prefix", default="profiles", help="Object key root prefix")
+    cb_config.add_argument("--access-key", default="", help="Access key; stored in profile .env when provided")
+    cb_config.add_argument("--secret-key", default="", help="Secret key; stored in profile .env when provided")
+
+    for resource_name in ("memory", "soul"):
+        resource_parser = cloud_backup_subparsers.add_parser(resource_name, help=f"Manage {resource_name} backups")
+        resource_subparsers = resource_parser.add_subparsers(dest="resource_action")
+        resource_schedule = resource_subparsers.add_parser("schedule", help=f"Create or update {resource_name} backup schedule")
+        resource_schedule.add_argument("cadence", choices=["hourly", "daily", "weekly", "monthly", "off"])
+        resource_subparsers.add_parser("backup", help=f"Run {resource_name} backup immediately")
+        resource_subparsers.add_parser("history", help=f"List {resource_name} backup objects")
+        resource_restore = resource_subparsers.add_parser("restore", help=f"Restore a {resource_name} backup object")
+        resource_restore.add_argument("object_key", help="Object key returned by history or backup")
+
+    cloud_backup_parser.set_defaults(func=cmd_cloud_backup)
+
+    # =========================================================================
+    # soul command
+    # =========================================================================
+    soul_parser = subparsers.add_parser(
+        "soul",
+        help="Show team parent, local, and effective soul",
+        description="Inspect the local SOUL.md, Team Cloud parent soul, and effective merged soul.",
+    )
+    soul_subparsers = soul_parser.add_subparsers(dest="soul_action")
+    soul_subparsers.add_parser("status", help="Show soul mode and merge status")
+    soul_show = soul_subparsers.add_parser("show", help="Show a soul document")
+    soul_show.add_argument("target", nargs="?", choices=["team", "local", "effective"], default="effective")
+    soul_subparsers.add_parser("merge", help="Recompute effective soul after saving local SOUL.md")
+    soul_parser.set_defaults(func=cmd_soul)
 
     # =========================================================================
     # cron command

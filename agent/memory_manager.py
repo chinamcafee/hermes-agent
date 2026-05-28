@@ -4,8 +4,9 @@ Single integration point in run_agent.py. Replaces scattered per-backend
 code with one manager that delegates to registered providers.
 
 Only ONE external plugin provider is allowed at a time — attempting to
-register a second external provider is rejected with a warning.  This
-prevents tool schema bloat and conflicting memory backends.
+register a second external provider is rejected with a warning.  The
+first-party Team Cloud provider is a separate runtime integration and can
+coexist with one personal external provider.
 
 Usage in run_agent.py:
     self._memory_manager = MemoryManager()
@@ -242,32 +243,45 @@ def build_memory_context_block(raw_context: str) -> str:
 
 
 class MemoryManager:
-    """Orchestrates the built-in provider plus at most one external provider.
+    """Orchestrates built-in, Team Cloud, and at most one external provider.
 
-    The builtin provider is always first. Only one non-builtin (external)
-    provider is allowed.  Failures in one provider never block the other.
+    The builtin provider is always first. Team Cloud is first-party and may
+    coexist with one non-builtin plugin provider. Failures in one provider
+    never block the other.
     """
 
     def __init__(self) -> None:
         self._providers: List[MemoryProvider] = []
         self._tool_to_provider: Dict[str, MemoryProvider] = {}
-        self._has_external: bool = False  # True once a non-builtin provider is added
+        self._has_external: bool = False  # True once a plugin provider is added
+        self._has_team_cloud: bool = False
 
     # -- Registration --------------------------------------------------------
 
     def add_provider(self, provider: MemoryProvider) -> None:
         """Register a memory provider.
 
-        Built-in provider (name ``"builtin"``) is always accepted.
-        Only **one** external (non-builtin) provider is allowed — a second
-        attempt is rejected with a warning.
+        Built-in provider (name ``"builtin"``) and Team Cloud are always
+        accepted once. Only **one** external plugin provider is allowed — a
+        second attempt is rejected with a warning.
         """
         is_builtin = provider.name == "builtin"
+        is_team_cloud = provider.name == "team_cloud"
 
-        if not is_builtin:
+        if is_team_cloud:
+            if self._has_team_cloud:
+                logger.warning("Rejected duplicate Team Cloud memory provider")
+                return
+            self._has_team_cloud = True
+        elif not is_builtin:
             if self._has_external:
                 existing = next(
-                    (p.name for p in self._providers if p.name != "builtin"), "unknown"
+                    (
+                        p.name
+                        for p in self._providers
+                        if p.name not in {"builtin", "team_cloud"}
+                    ),
+                    "unknown",
                 )
                 logger.warning(
                     "Rejected memory provider '%s' — external provider '%s' is "

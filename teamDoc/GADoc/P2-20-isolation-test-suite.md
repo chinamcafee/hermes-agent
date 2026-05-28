@@ -4,6 +4,8 @@
 状态：Implemented
 前置：`P2-19 Runtime event bridge`
 
+> 2026-05-24 更新：Go 服务端和 Dashboard 管理面已取消部署级 service token。本文隔离矩阵中的 API Server trusted headers 条目是 P2 阶段历史验证口径；后续 CLI / Gateway / API Server 身份透传应改用成员级 token、OIDC/JWT 或 PAT。
+
 ## 目标
 
 本步骤把 P2 已完成的双层记忆、可信身份、Gateway session prefix、Web Chat、云会话历史和 runtime event bridge 固化为可重复执行的隔离 smoke。该套件用于在 P3/P4 阶段快速发现跨成员、跨团队、跨组织和跨会话的权限/数据隔离回归。
@@ -25,7 +27,7 @@
 | `personal_memory_isolation` | personal memory 只能按当前 member 召回，shared session 可关闭 personal partition。 |
 | `team_memory_authz_isolation` | team_shared 记忆召回和写入路径保持 Team Cloud/AuthZ gate。 |
 | `gateway_team_identity_session_prefix` | Gateway external identity resolve、未绑定提示和 org/team session key prefix。 |
-| `api_server_trusted_identity_headers` | API Server trusted headers 只在 service token 通过后接受。 |
+| `api_server_trusted_identity_headers` | API Server trusted headers 必须在成员级 token、OIDC/JWT 或 PAT 校验通过后才接受；P2 历史实现曾使用 service token gate，已被 GTC-60~64 口径取代。 |
 | `cloud_history_org_project_member_filter` | cloud sessions 按 org/project/member/q 过滤。 |
 | `runtime_event_bridge_session_binding` | runtime events 绑定 cloud session/run，并写入 message/tool history。 |
 

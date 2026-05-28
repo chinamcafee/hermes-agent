@@ -1,6 +1,6 @@
 # 11. 源码可访问组件准入策略
 
-本文件是所有实施文档的硬约束：团队版 Hermes Agent 的新增核心组件必须源码可访问。本轮 GA 方案限定为 Casdoor、SpiceDB、PostgreSQL/pgvector、MinIO 和自研 Team Cloud。
+本文件是所有实施文档的硬约束：团队版 Hermes Agent 的新增核心组件必须源码可访问。本轮 GA 方案限定为 Casdoor、SpiceDB、PostgreSQL/pgvector、可选 MinIO/S3-compatible 对象存储和自研 Team Cloud。
 
 ## 1. 准入规则
 
@@ -28,8 +28,8 @@
 | SpiceDB | 资源级授权、ReBAC、权限解释 | 默认 AuthZ | GitHub 可访问，Apache-2.0 | 所有业务资源权限边界 |
 | PostgreSQL | 结构化 canonical data | 默认数据库 | 源码可访问，PostgreSQL License | 所有业务表带 `org_id` |
 | pgvector | 向量相似度搜索 | 默认记忆向量索引 | GitHub 可访问，PostgreSQL License | HNSW/IVFFlat，canonical memory 仍在 PostgreSQL |
-| MinIO | 对象存储、个人记忆备份、导出包 | 默认对象存储 | GitHub 可访问，AGPL-3.0 | AGPL 影响需法务确认 |
-| Go 标准库 `net/http` | Team API | 首次上线服务框架 | Go 源码可访问，BSD-style | `team_cloud_go/` 单二进制，适合 Kubernetes 部署 |
+| MinIO/S3-compatible | 团队记忆备份对象、CLI 个人备份目标 | 可选对象存储 | MinIO GitHub 可访问，AGPL-3.0；也可替换为兼容服务 | Team Cloud 初始化不强制依赖 |
+| Go 标准库 `net/http` | Team API | 首次上线服务框架 | Go 源码可访问，BSD-style | `team_cloud/` 单二进制，适合 Kubernetes 部署 |
 
 ## 3. 不进入默认路线
 

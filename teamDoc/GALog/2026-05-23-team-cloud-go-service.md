@@ -2,19 +2,20 @@
 
 日期：2026-05-23
 
+> 2026-05-24 更新：早期 service token 配置记录已被 GTC-60~64 取代；早期 `/api/organizations/{org_id}/teams` 工作组 API 已被 GTC-65 退役。当前 Go 服务端使用无 token 首次初始化、Redis Dashboard session token、Casdoor/JWKS JWT 和单团队空间模型。
+
 ## 背景
 
-用户确认团队协作需要独立云端服务端承载团队记忆同步和成员管理 API，并要求在不修改 Python `team_cloud/` 的前提下，以 Go 技术栈在 `team_cloud_go/` 中重写服务端，便于 Kubernetes 部署。由于 Python 版从未上线，Go 版作为首次上线目标，允许破坏性更新。
+用户确认团队协作需要独立云端服务端承载团队记忆同步和成员管理 API，并要求在不修改 Python `team_cloud/` 的前提下，以 Go 技术栈在 `team_cloud/` 中重写服务端，便于 Kubernetes 部署。由于 Python 版从未上线，Go 版作为首次上线目标，允许破坏性更新。
 
 ## 已完成编码工作
 
-- 新增独立 Go module：`team_cloud_go/go.mod`。
-- 新增服务入口：`team_cloud_go/cmd/team-cloud-server/main.go`。
+- 新增独立 Go module：`team_cloud/go.mod`。
+- 新增服务入口：`team_cloud/cmd/team-cloud-server/main.go`。
 - 新增配置读取：`TEAM_CLOUD_SERVICE_TOKEN`、`TEAM_CLOUD_DATABASE_URL`、`TEAM_CLOUD_AUTO_MIGRATE`、`TEAM_CLOUD_BIND_ADDR`。
 - 新增 HTTP API：
   - `/healthz`、`/readyz`、`/metrics`
   - `/api/organizations`
-  - `/api/organizations/{org_id}/teams`
   - `/api/organizations/{org_id}/members`
   - `/api/organizations/{org_id}/members/invite`
   - `/api/organizations/{org_id}/members/{member_id}/disable`
@@ -32,10 +33,10 @@
 ## 测试记录
 
 - 红灯：新增 config、postgres schema、deploy asset 测试后，`go test ./...` 失败于缺少 `DatabaseURL`、`AutoMigrate`、`SchemaSQL`、Dockerfile 和 Kubernetes manifest。
-- 绿灯：完成实现后运行 `cd team_cloud_go && go test ./...`，全部包通过。
-- 静态检查：已运行 `cd team_cloud_go && go vet ./...`，无输出，退出码为 0。
-- 构建检查：已运行 `cd team_cloud_go && go build ./cmd/team-cloud-server`，退出码为 0；验证生成的本地二进制已删除。
-- Manifest 检查：当前 Python 环境缺少 `PyYAML`，改用 Ruby 标准库解析 `team_cloud_go/deploy/kubernetes/team-cloud-go.yaml`，确认包含 `Secret`、`Deployment`、`Service` 三个文档。
+- 绿灯：完成实现后运行 `cd team_cloud && go test ./...`，全部包通过。
+- 静态检查：已运行 `cd team_cloud && go vet ./...`，无输出，退出码为 0。
+- 构建检查：已运行 `cd team_cloud && go build ./cmd/team-cloud-server`，退出码为 0；验证生成的本地二进制已删除。
+- Manifest 检查：当前 Python 环境缺少 `PyYAML`，改用 Ruby 标准库解析 `team_cloud/deploy/kubernetes/team-cloud-go.yaml`，确认包含 `Secret`、`Deployment`、`Service` 三个文档。
 
 ## 文档更新计划
 

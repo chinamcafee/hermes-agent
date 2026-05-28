@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from team_cloud.tool_policy import TeamToolPolicyHook, build_default_approval_callback
 from utils import env_var_enabled
 
 
@@ -19,6 +18,8 @@ def register(ctx: Any) -> None:
     if not env_var_enabled(HERMES_TEAM_TOOL_POLICY_ENABLED):
         logger.debug("Team Cloud tool policy plugin loaded but not enabled")
         return
+
+    from agent.team_tool_policy import TeamToolPolicyHook, build_default_approval_callback
 
     hook = TeamToolPolicyHook(
         authz_client=_build_authz_client(),

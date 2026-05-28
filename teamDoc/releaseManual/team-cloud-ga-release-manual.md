@@ -12,12 +12,12 @@
 - Casdoor 统一登录和身份同步
 - SpiceDB 权限关系和 Permission Explorer
 - PostgreSQL/pgvector 团队记忆存储与检索
-- MinIO 备份对象和 manifest
+- 可选 MinIO/S3-compatible 团队记忆和团队父人格备份对象
 - Team Cloud Go 服务端、Team API、`/dashboard/` 管理台、Web Chat、Gateway/API identity headers
-- TeamMemoryProvider 个人记忆与团队共享记忆双层接入
-- 本地记忆定时备份、恢复、组织导出、删除和保留策略
+- TeamMemoryProvider 团队共享记忆接入
+- CLI `/cloud-backup memory|soul` 本地个人记忆和本地人格定时备份、恢复、组织导出、删除和保留策略
 - 工具策略、高危审批、break-glass 和审计
-- SessionDB 与 legacy memory provider 迁移
+- 历史数据导入策略
 - Deployment smoke 和 GA 验证
 - 运维、支持和 Post-GA backlog
 
@@ -29,74 +29,75 @@ Team Cloud 的默认拓扑由以下组件组成：
 
 | 组件 | 用途 | 关键验证 |
 | --- | --- | --- |
-| Casdoor | 组织登录、OIDC token、用户和组同步。 | `tests/team_cloud/test_casdoor_oidc.py`、`tests/team_cloud/test_casdoor_sync_worker.py` |
-| SpiceDB | 组织、团队、项目、记忆、工具和备份权限关系。 | `tests/team_cloud/test_spicedb_client.py`、`tests/team_cloud/test_authz_middleware.py` |
-| PostgreSQL/pgvector | Team Cloud 主库、memory schema、embedding 检索；Go 服务端使用 `embedding vector(1536)` 和 `query_embedding`。 | `tests/team_cloud/test_postgres_migrations.py`、`tests/team_cloud/test_memory_query_layer.py`、`team_cloud_go/internal/store/postgres/schema_test.go`、`team_cloud_go/internal/httpapi/server_test.go` |
-| MinIO | 个人备份、组织导出和 restore staging 对象。 | `tests/team_cloud/test_minio_manifest.py`、`tests/team_cloud/test_backup_storage.py` |
-| Team Cloud Go API | 组织/成员 API、memory API、review queue、个人备份策略 API、bootstrap API，首次上线默认服务端。 | `cd team_cloud_go && go test ./...`、`cd team_cloud_go && go vet ./...` |
-| Team Cloud Go Dashboard | `/dashboard/` 静态管理台，覆盖首次初始化、超级管理员、组织团队成员、权限、记忆治理、备份和审计。 | `cd team_cloud_go/dashboard && npm test -- --run`、`npm run type-check`、`npm run build` |
+| Casdoor/JWKS | 组织登录 token 校验、issuer/audience/expiration 校验。 | `team_cloud/internal/httpapi/ga_capabilities_test.go`、`team_cloud/internal/authn` |
+| SpiceDB/Authzed HTTP | 组织、成员、记忆、工具和备份权限关系。 | `team_cloud/internal/authz/spicedb_http_test.go`、`team_cloud/internal/httpapi/ga_capabilities_test.go` |
+| PostgreSQL/pgvector | Team Cloud 主库、memory schema、embedding 检索；Go 服务端使用 `embedding vector(1536)` 和 `query_embedding`。 | `team_cloud/internal/store/postgres/schema_test.go`、`team_cloud/internal/httpapi/server_test.go` |
+| MinIO/S3-compatible | 可选团队记忆和团队父人格备份对象存储；CLI 本地 memory/soul 备份由用户自行配置对象存储。 | `team_cloud/internal/objectstore`、`tests/hermes_cli/test_cloud_backup_cli.py` |
+| Team Cloud Go API | 组织/成员 API、团队 memory API、团队父人格 API、review queue、团队级备份管理 API、bootstrap API，首次上线默认服务端。 | `cd team_cloud && go test ./...`、`cd team_cloud && go vet ./...` |
+| Team Cloud Go Dashboard | `/dashboard/` 静态管理台，覆盖独立初始化引导、超级管理员登录、单团队成员、权限、记忆治理、团队父人格治理、备份和审计。 | `cd team_cloud/dashboard && npm test -- --run`、`npm run type-check`、`npm run build` |
 | Gateway/API identity resolver | 消息平台和 API server 的团队身份注入。 | `tests/gateway/test_api_server_team_headers.py`、`tests/gateway/test_gateway_team_identity_resolver.py` |
 
 默认上线顺序：
 
-1. 构建并部署 `team_cloud_go/` Go 服务端和随镜像发布的 Dashboard。
+1. 构建并部署 `team_cloud/` Go 服务端和随镜像发布的 Dashboard。
 2. 完成 Casdoor issuer、client、redirect URL 和 JWKS 配置。
 3. 加载 SpiceDB schema，确认 pre-shared key 与 Team API secret 一致。
 4. 执行 PostgreSQL migration，确认 pgvector extension 可用。
-5. 初始化 MinIO bucket、manifest 和 lifecycle。
-6. 打开 `/dashboard/`，使用 service token 通过 bootstrap 创建第一个 Owner。
-7. 邀请管理员和成员。
-8. 由 Owner 在 Dashboard 创建团队、成员和权限关系。
-9. 运行 `cd team_cloud_go && go test ./...`、`go vet ./...`、`cd dashboard && npm test -- --run && npm run build` 留存 Go 服务端和 Dashboard 证据。
+5. 如需团队记忆对象备份，初始化可选 MinIO/S3 bucket、manifest 和 lifecycle。
+6. 打开 `/dashboard/`，确认 PostgreSQL、Redis 已由 Secret/env 注入并 ready；对象存储未配置时显示 optional。
+7. 在独立 Step-by-Step 初始化引导页创建单团队空间和唯一超级管理员。
+8. 使用超级管理员帐号密码登录 Dashboard，在团队成员页创建管理员和用户。
+9. 运行 `cd team_cloud && go test ./...`、`go vet ./...`、`cd dashboard && npm test -- --run && npm run build` 留存 Go 服务端和 Dashboard 证据。
 10. 运行 `scripts/team-cloud-foundation-smoke.sh` 留存 Hermes runtime 集成证据。
 
 ## 安装和首次登录
 
 ### Go 服务端 Kubernetes 部署
 
-首次上线推荐部署 `team_cloud_go/`，不再部署 Python `team_cloud/` 作为 Team Cloud 服务端。
+首次上线推荐部署 `team_cloud/` Go 服务端；旧 Python 服务端已经删除。
 
 ```bash
-cd team_cloud_go
+cd team_cloud
 docker build -t ghcr.io/hermes-agent/team-cloud-go:0.1.0 .
 kubectl apply -f deploy/kubernetes/team-cloud-go.yaml
 kubectl rollout status deployment/hermes-team-cloud-go
 ```
 
-Go 服务端镜像包含 `team_cloud_go/dashboard/` 的 Next.js static export。部署完成后：
+Go 服务端镜像包含 `team_cloud/dashboard/` 的 Next.js static export。部署完成后：
 
 ```bash
 kubectl port-forward svc/hermes-team-cloud-go 8780:8780
 open http://localhost:8780/dashboard/
 ```
 
-Dashboard 首次初始化调用：
+Dashboard V2 首次初始化调用：
 
-- `GET /v1/bootstrap/status` 检查服务、后端、授权、对象存储和初始化状态。
-- `POST /v1/bootstrap/super-admin` 使用 `TEAM_CLOUD_SERVICE_TOKEN` 创建第一个组织 Owner。
-- 已经存在 Owner 后，bootstrap 会返回 `409 already_initialized`，后续管理员通过组织/成员页面扩展团队。
+- `GET /v1/bootstrap/status` 检查服务、后端、授权、PostgreSQL、可选对象存储、团队空间和超级管理员状态。
+- `POST /v1/bootstrap/super-admin` 在未初始化状态下开放调用，创建单团队空间和唯一 `super_admin`。
+- `POST /v1/auth/login` 使用 `super_admin` 或 `admin` 帐号密码换取 Redis 支撑的 `hcs_...` Dashboard session token。
+- 已经存在 `super_admin` 后，bootstrap 会返回 `409 already_initialized`，后续成员通过“团队成员”页面直接创建。
 
 部署前必须替换 Kubernetes Secret：
 
-- `TEAM_CLOUD_SERVICE_TOKEN`
 - `TEAM_CLOUD_DATABASE_URL`
+- `TEAM_CLOUD_REDIS_PASSWORD`
 - `TEAM_CLOUD_DASHBOARD_ENABLED=true`
 - `TEAM_CLOUD_DASHBOARD_DIR=/usr/share/team-cloud-go/dashboard`
 
 生产环境要求：
 
 - `TEAM_CLOUD_DATABASE_URL` 指向 PostgreSQL。
+- `TEAM_CLOUD_REDIS_ADDR` 指向 Redis，`TEAM_CLOUD_REDIS_PASSWORD` 由 Secret 注入。
 - `TEAM_CLOUD_AUTO_MIGRATE=true` 仅用于首发和受控升级；严格变更窗口可改为 `false` 并由迁移 Job 执行。
-- `TEAM_CLOUD_SERVICE_TOKEN` 通过 Secret 管理，不写入镜像或 ConfigMap。
 - `/readyz` 返回 `ready` 后再接入 Hermes runtime 和 Gateway。
 - `/dashboard/` 能返回管理台 HTML，未知 Dashboard 子路径能回退到静态 `index.html`。
 
 Go 服务端本地验证：
 
 ```bash
-cd team_cloud_go
-TEAM_CLOUD_SERVICE_TOKEN=dev-token \
+cd team_cloud
 TEAM_CLOUD_DATABASE_URL='postgres://hermes:secret@localhost:5432/hermes_team_cloud?sslmode=disable' \
+TEAM_CLOUD_REDIS_ADDR='localhost:6379' \
 go run ./cmd/team-cloud-server
 ```
 
@@ -108,9 +109,9 @@ TEAM_CLOUD_CASDOOR_AUDIENCE=hermes-team-cloud
 TEAM_CLOUD_CASDOOR_JWKS_URL=https://casdoor.example/.well-known/jwks
 ```
 
-配置后，Team Cloud Go 会按 JWKS 校验 RS256 Bearer token 的签名、issuer、audience 和 expiration。内部 automation 仍可使用 `TEAM_CLOUD_SERVICE_TOKEN`。
+配置后，Team Cloud Go 会按 JWKS 校验 RS256 Bearer token 的签名、issuer、audience 和 expiration。Dashboard 登录态使用 Redis session token。
 
-远程授权和个人备份对象配置：
+远程授权和可选团队记忆备份对象配置：
 
 ```bash
 TEAM_CLOUD_AUTHZ_MODE=spicedb_http
@@ -119,7 +120,7 @@ TEAM_CLOUD_AUTHZ_TOKEN=change-me
 
 TEAM_CLOUD_BACKUP_OBJECT_MODE=s3
 TEAM_CLOUD_BACKUP_S3_ENDPOINT=http://minio:9000
-TEAM_CLOUD_BACKUP_S3_BUCKET=hermes-personal-backups
+TEAM_CLOUD_BACKUP_S3_BUCKET=hermes-team-memory-backups
 TEAM_CLOUD_BACKUP_S3_REGION=us-east-1
 TEAM_CLOUD_BACKUP_S3_ACCESS_KEY_ID=change-me
 TEAM_CLOUD_BACKUP_S3_SECRET_ACCESS_KEY=change-me
@@ -133,99 +134,94 @@ TEAM_CLOUD_BACKUP_SCHEDULER_INTERVAL_SECONDS=3600
 Dashboard 本地构建验证：
 
 ```bash
-cd team_cloud_go/dashboard
+cd team_cloud/dashboard
 npm test -- --run
 npm run type-check
 npm run build
 ```
 
-### Docker Compose（历史验证资产）
-
-`deploy/team-cloud/compose.yaml` 是 P1-P5 期间的历史验证资产，用于复跑 Python 参考实现相关测试；首次上线不再以 Python `team_cloud/` 作为 Team Cloud 服务端。需要本地验证 Go 服务时优先使用上方 `team_cloud_go` 命令。
+### 本地 Smoke 脚本
 
 ```bash
-docker compose -f deploy/team-cloud/compose.yaml up --build --wait
+scripts/team-cloud-smoke.sh
 scripts/team-cloud-foundation-smoke.sh
+scripts/team-cloud-isolation-smoke.sh
 ```
 
 安装前检查：
 
-- `deploy/team-cloud/secrets/*.txt` 已准备。
-- `TEAM_CLOUD_*_FILE` 指向的 secret 文件存在。
-- 本地端口 `8780`、`8781`、`18000`、`50051`、`19000`、`19001` 未被占用。
+- `team_cloud/` 能构建 Go 服务端和 Dashboard。
+- 本地端口 `8780`、`50051`、`5432`、`6379`、`9000` 未被占用，具体取决于是否启动外部 PostgreSQL、Redis、SpiceDB 和可选 MinIO。
 - Casdoor redirect URL 与浏览器访问域名一致。
 - SpiceDB pre-shared key 与 Team API 配置一致。
-- MinIO bucket、access key、secret key 和 lifecycle 已初始化。
-- PostgreSQL 18 数据卷挂载到 `/var/lib/postgresql`。
+- 如启用团队记忆对象备份，MinIO/S3 bucket、access key、secret key 和 lifecycle 已初始化。
+- PostgreSQL 18 数据卷挂载到 `/var/lib/postgresql`，minikube 手册中的 StatefulSet 已按此路径配置。
 
-受限 registry 环境可覆盖镜像来源：
-
-```bash
-TEAM_CLOUD_PYTHON_BASE_IMAGE=mirror.gcr.io/library/python:3.13-slim-bookworm \
-ALPINE_IMAGE=mirror.gcr.io/library/alpine:3.22.2 \
-MINIO_IMAGE=quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z \
-MINIO_MC_IMAGE=quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z \
-MAILPIT_IMAGE=ghcr.io/axllent/mailpit:v1.29.5 \
-TEAM_WEB_IMAGE=mirror.gcr.io/library/nginx:1.29.3-alpine \
-docker compose -f deploy/team-cloud/compose.yaml up --build --wait
-```
-
-### Helm
+### Kubernetes Manifest
 
 适用于 Kubernetes staging/production。
 
-Go 服务端 Helm chart 迁移完成前，生产安装使用 `team_cloud_go/deploy/kubernetes/team-cloud-go.yaml`。原 `deploy/team-cloud/helm/hermes-team-cloud` 保留为 P5 验证证据和后续 Helm 迁移参考。
+当前生产安装入口是 `team_cloud/deploy/kubernetes/team-cloud-go.yaml`。旧 Python compose/Helm/offline 资产已经删除，不再作为 GA 安装路径。
 
 ```bash
-helm upgrade --install hermes-team-cloud deploy/team-cloud/helm/hermes-team-cloud --atomic --wait
+kubectl apply -f team_cloud/deploy/kubernetes/team-cloud-go.yaml
+kubectl rollout status deployment/hermes-team-cloud-go -n hermes-team-cloud --timeout=180s
 scripts/team-cloud-foundation-smoke.sh
 ```
-
-GA 本地补审已完成 `helm lint`、`helm upgrade`、二次 upgrade 和 `helm rollback`。如果只验证 release 机制而不启动工作负载，可使用 P5-13 同款 smoke 参数：`replicaCount.*=0`、`jobs.*.enabled=false`、`persistence.enabled=false`。
 
 ### Offline bundle
 
 适用于离线或受限网络环境。
 
 ```bash
-scripts/team-cloud-offline-bundle.sh --manifest deploy/team-cloud/offline/manifest.yaml
-deploy/team-cloud/offline/install.sh --manifest deploy/team-cloud/offline/manifest.yaml
+scripts/team-cloud-offline-bundle.sh
 scripts/team-cloud-foundation-smoke.sh
 ```
 
 离线包必须包含：
 
-- `team_cloud_go/Dockerfile`
-- `team_cloud_go/deploy/kubernetes/team-cloud-go.yaml`
-- `deploy/team-cloud/offline/manifest.yaml`
-- 镜像目录
+- `team_cloud/Dockerfile`
+- `team_cloud/deploy/kubernetes/team-cloud-go.yaml`
+- `team_cloud/README.md`
+- release manual 和 minikube manual
+- 可选镜像目录（通过 `OFFLINE_IMAGES` 导出）
 - checksums
-- 安装脚本
 - 对应版本的 release artifacts
 
 ### 首次初始化和登录
 
 1. 打开 `http://<team-cloud-host>:8780/dashboard/`。
-2. 在连接栏输入 Team Cloud API 地址和 service token。
-3. 在“初始化”页刷新状态，确认 `initialized=false`。
-4. 输入组织标识、组织名称、管理员邮箱和管理员用户 ID，创建超级管理员。
-5. 在“组织”页创建团队并邀请至少一个管理员，避免单 Owner 风险。
-6. 在“权限”页验证 `organization:<org>#owner@member:<member>` 和团队权限关系。
-7. 配置 Casdoor 后，Org Owner 使用 Casdoor 登录 Team Web 或持有 Casdoor JWT 调用 API。
+2. 如果引导页显示 PostgreSQL 或 Redis 未配置，先修复 Kubernetes Secret/env 并重启服务；Dashboard 不再保存连接配置。对象存储是可选状态，不阻塞初始化。
+3. 在 Step-by-Step 初始化引导页输入团队名、超级管理员邮箱、帐号和密码，创建唯一超级管理员。
+4. 初始化完成后使用超级管理员帐号密码登录管理台。
+5. 在“团队成员”页直接创建至少一个管理员和必要用户。
+6. 在“权限中心”页查看服务端写死的 super_admin/admin/user 角色能力矩阵。
+7. 配置 Casdoor 后，管理员可持有 Casdoor JWT 调用 API。
 8. 打开 Web Chat，提交一次团队会话。
 9. 运行 `scripts/team-cloud-foundation-smoke.sh`。
 
 ## 组织、团队和成员管理
 
-管理员在 Team Cloud Go Dashboard 或 Team API 中完成组织、团队和成员操作。团队云端管理页面不放在本地 Hermes dashboard/CLI 中；本地 UI 只保存远程 Team Cloud 地址、token 和个人运行配置。
+管理员在 Team Cloud Go Dashboard 或 Team API 中完成团队和成员操作。第一版 Dashboard 只暴露单团队模型，不把多组织、多租户作为显性页面层级；内部 `org_id` 保留为后续扩展和 API 兼容字段。团队云端管理页面不放在本地 Hermes dashboard/CLI/Desktop 中；本地 UI 只通过 Hermes Agent Bridge 保存远程 Team Cloud 地址、token 和个人运行配置。
 
 ### 创建组织
 
 Go 服务端 API 示例：
 
+先用 Dashboard 管理帐号换取用户级 token：
+
+```bash
+export TEAM_CLOUD_DASHBOARD_TOKEN="$(
+  curl -sS -X POST "$TEAM_CLOUD_URL/v1/auth/login" \
+    -H "Content-Type: application/json" \
+    -d '{"org_id":"hermes-labs","user_id":"owner","password":"<password>"}' \
+    | python -c 'import json,sys; print(json.load(sys.stdin)["token"])'
+)"
+```
+
 ```bash
 curl -sS -X POST "$TEAM_CLOUD_URL/api/organizations" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"slug":"hermes-labs","name":"Hermes Labs"}'
 ```
@@ -242,28 +238,73 @@ curl -sS -X POST "$TEAM_CLOUD_URL/api/organizations" \
 - SpiceDB 中存在 `organization:<slug>#owner@user:<owner>`。
 - Permission Explorer 可解释 owner 对组织、团队和项目的权限。
 
-### 邀请成员
+### 创建成员
 
 Go 服务端 API 示例：
 
 ```bash
-curl -sS -X POST "$TEAM_CLOUD_URL/api/organizations/hermes-labs/members/invite" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
+curl -sS -X POST "$TEAM_CLOUD_URL/api/organizations/hermes-labs/members" \
+  -H "Authorization: Bearer $DASHBOARD_SESSION_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"email":"alice@example.com","display_name":"Alice","user_id":"alice","role":"member"}'
+  -d '{"email":"alice@example.com","display_name":"Alice","user_id":"alice","role":"user","password":"change-me"}'
 ```
 
 成员生命周期：
 
-1. `invite_member`：录入 email、display_name、user_id、role。
-2. Casdoor 登录后完成 identity binding。
-3. relationship outbox 写入 organization/team membership。
-4. outbox worker 同步 SpiceDB。
-5. 成员进入 Web Chat 或 Gateway/API 运行时。
+1. `create_member`：超级管理员创建管理员或用户；管理员只能创建用户。
+2. 服务端保存密码 hash，API 不返回 hash。
+3. 成员页支持按帐号、邮箱和显示名查询，按角色筛选，编辑邮箱/显示名。
+4. 服务端写入 organization/team relationship。
+5. 成员随后配置 Hermes CLI/dashboard 连接 Team Cloud。
+6. 兼容 API `/members/invite` 仍保留给外部邀请流程，但不是 Dashboard V2 主路径。
+
+### Hermes CLI 连接 Team Cloud
+
+管理员在 Dashboard 创建成员后，成员在本地 Hermes profile 内执行：
+
+```bash
+hermes team connect https://team-cloud.example.com
+hermes team login --org hermes-labs --user alice --project default
+hermes team status
+hermes
+```
+
+本地开发或 minikube 环境：
+
+```bash
+kubectl -n hermes-team-cloud port-forward svc/team-cloud-go 8780:8780
+hermes team connect http://localhost:8780
+hermes team login --org hermes-labs --user alice --project default
+```
+
+交互式 CLI 中也可以使用 slash command：
+
+```text
+/team status
+/team connect http://localhost:8780
+/team login hermes-labs alice hermes-labs default
+/team off
+/team logout
+```
+
+CLI 配置边界：
+
+- `config.yaml` 的 `team_cloud` 段只保存 URL、默认 org/team/project/member 和 API 熔断状态。
+- 登录 session token 写入 profile `.env` 的 `HERMES_TEAM_CLOUD_SESSION_TOKEN`。
+- `hermes team off` 只关闭团队模式，不删除 token。
+- `hermes team logout` 删除本地 token 并关闭团队模式。
+- CLI、TUI、oneshot 和 background agent 都会在配置完整时把 `team_context` 传给 `AIAgent`。
+- 普通 `user` 可以登录 CLI；Dashboard 管理页仍只允许 `super_admin/admin`。
+- 个人记忆和本地人格不进入 Team Cloud 云端管理；本地备份使用 `/cloud-backup memory|soul`。
+- 团队父人格只能由 Team Cloud Dashboard 的“团队父人格中心”管理；CLI/Desktop 保存本地人格时，若处于 team mode，会触发 Hermes Agent 使用当前 profile 配置的大模型供应商合并团队父人格和本地人格。
+- Team mode 可用性必须同时满足 Team Cloud URL 已配置、成员帐号登录成功、session 校验通过、默认 org/member context 存在且熔断器未阻断。只配置 URL 但未登录时，CLI/Desktop 应显示 login required/local，不得显示 Team mode active。
+- team mode 下即使团队父人格尚未配置正文，CLI/Desktop 也应展示团队父人格、本地人格、合并后人格三段；合并后人格等于本地人格并标记 `team_parent_missing`。
+- 如果没有配置模型供应商，或供应商不可用，本地人格保存仍成功；CLI/Desktop 应显示合并失败提示，并使用安全降级组合保证团队父人格仍优先。
 
 禁用成员时：
 
 - 管理 API 写入 disable 状态。
+- 唯一超级管理员不可被停用。
 - relationship outbox 写入删除 intent。
 - 后续权限 check fail closed。
 - audit 保留 actor、target member、decision 和 request id。
@@ -279,20 +320,20 @@ curl -sS -X POST "$TEAM_CLOUD_URL/api/organizations/hermes-labs/members/invite" 
 
 ## 设置团队成员的个人记忆环境
 
-个人记忆是成员私有的长期记忆序列，scope 固定为 `personal`。TeamMemoryProvider 通过 `TeamContext` 确定当前成员和团队上下文。
+个人记忆是成员本地 Hermes profile 的长期记忆序列，不由 Team Cloud 云端保存、查询或备份。成员加入团队后，Team Cloud 只提供团队身份、团队记忆和团队记忆治理；个人记忆继续由 Hermes 本地记忆系统处理。
 
-### 前置条件
+成员侧准备：
 
-每个成员必须满足：
+1. 确认当前 `HERMES_HOME` 或 profile 是自己的个人环境。
+2. 正常使用 Hermes 内置个人记忆能力。
+3. 如需备份，执行 `/cloud-backup config` 配置 MinIO/S3-compatible 地址。
+4. 执行 `/cloud-backup memory schedule daily|weekly|monthly` 设置本地个人记忆周期备份，或 `/cloud-backup memory backup` 手动触发。
+5. 执行 `/cloud-backup soul schedule daily|weekly|monthly` 设置本地人格周期备份，或 `/cloud-backup soul backup` 手动触发。
+6. 需要恢复时，先确认目标 profile，再执行 `/cloud-backup memory restore <object-key>` 或 `/cloud-backup soul restore <object-key>`。
 
-- 已在 Casdoor 登录并同步到 Team Cloud。
-- 已绑定 organization membership。
-- 已绑定 team membership。
-- 已有 `member_id`。
-- Web/API/Gateway 运行时可以解析 `org_id`、`team_id`、`project_id` 和 `member_id`。
-- `personal_memory_enabled` 为 `True`，除非这是共享群聊或管理员显式关闭个人记忆。
+Team Cloud CLI provider 不暴露 `team_memory_remember` 或 `team_memory_backup_now`。这些能力已经被本地个人记忆、团队记忆 Dashboard 和 `/cloud-backup` 取代。
 
-TeamMemoryProvider 所需上下文：
+### TeamMemoryProvider 上下文
 
 ```python
 TeamContext(
@@ -300,60 +341,27 @@ TeamContext(
     team_id="team-1",
     project_id="project-1",
     member_id="alice",
-    personal_memory_enabled=True,
 )
 ```
-
-TeamMemoryProvider 配置：
 
 ```python
 TeamMemoryProviderConfig(
     team_cloud_url="https://team-cloud.example",
-    service_token="<service-token>",
+    service_token="<member-session-token>",
     team_context=team_context,
     prefetch_limit=8,
 )
 ```
 
-### 开启个人记忆
-
-1. 管理员确认成员未禁用。
-2. 确认 Gateway/API identity resolver 可解析当前 actor。
-3. 对单人会话设置 `personal_memory_enabled=True`。
-4. 在 agent turn 开始前调用 `/v1/memory/prefetch`。
-5. 在 agent turn 结束后通过 `/v1/memory/observations` 写入 observation。
-6. extraction worker 从 observation 生成候选个人记忆。
-
-### 成员可用工具
+### 成员可用团队记忆工具
 
 | 工具 | 用途 | 默认 scope |
 | --- | --- | --- |
-| `team_memory_search` | 搜索 personal 和 team_shared 记忆。 | personal + team_shared |
-| `team_memory_remember` | 写入个人记忆。 | personal |
-| `team_memory_propose` | 提交团队共享记忆候选。 | team_shared |
-| `team_memory_promote` | 将个人记忆提升为团队共享候选。 | team_shared candidate |
-| `team_memory_forget` | 归档记忆。 | personal 写权限 |
-| `team_memory_backup_now` | 立即运行个人记忆备份。 | personal backup |
-
-个人记忆写入权限使用 `memory.personal.write` 检查。权限被拒绝时返回 `permission_denied`，不会调用 Team Cloud 写接口。
-
-### 成员自助操作
-
-成员可以：
-
-- 创建个人事实、偏好和项目上下文。
-- 查询自己的 personal 记忆。
-- 归档过期个人记忆。
-- 恢复软删除记忆。
-- 触发 `team_memory_backup_now`。
-- 查看 restore preview，再决定是否执行恢复。
-
-成员不能：
-
-- 读取其他成员的 personal 记忆。
-- 在共享群聊中默认注入个人记忆。
-- 跳过 PII/secret detector。
-- 将个人记忆直接写成 team_shared；必须走 propose/review。
+| `team_memory_search` | 搜索 team_shared 团队记忆。 | team_shared |
+| `team_memory_add` | 用户明确要求新增团队记忆时，直接创建 active 团队共享记忆。 | team_shared |
+| `team_memory_propose` | 提交团队共享记忆待审核候选。 | team_shared pending_review |
+| `team_memory_promote` | 将候选记忆提交到团队审核流。 | team_shared candidate |
+| `team_memory_forget` | 归档团队记忆。 | team_shared |
 
 ## 配置团队共享记忆
 
@@ -380,13 +388,22 @@ TeamMemoryProviderConfig(
 
 ### 提交流程
 
-1. 成员调用 `team_memory_propose`，或使用 `team_memory_promote` 从个人记忆提升候选。
-2. Team API 创建 `team_shared` 候选，默认进入 review queue。
-3. duplicate/conflict detector 查重。
-4. PII/secret detector 标记敏感内容。
-5. 管理员或 reviewer 批准、拒绝或要求修改。
-6. 批准后写入 SpiceDB memory relationship。
-7. 后续 prefetch 先按 `query_embedding`/文本召回，再通过 `read_team` 授权检查过滤。
+1. 管理员/具备 `write_team` 权限的成员如果明确要新增生效团队记忆，调用 `team_memory_add`，直接创建 `status=active` 的 `team_shared` 记忆。
+2. 需要审核时，成员调用 `team_memory_propose`，提交团队记忆候选。
+3. Team API 创建 `team_shared` 候选，默认进入 review queue。
+4. duplicate/conflict detector 查重。
+5. PII/secret detector 标记敏感内容。
+6. 管理员或 reviewer 批准、拒绝或要求修改。
+7. 批准后写入 SpiceDB memory relationship。
+8. 后续 prefetch 先按 `query_embedding`/文本召回，再通过 `read_team` 授权检查过滤。
+
+### 自动抽取触发边界
+
+当前 Go 服务端区分三件事：
+
+- 显式新增：用户明确要求“增加团队记忆”时，CLI team mode 中的模型应调用 `team_memory_add`，立即写入 `/v1/memory`，Dashboard active 列表可见。
+- Observation 上报：每个完整、未中断的 agent turn 结束后，`TeamMemoryProvider.sync_turn()` 调用 `/v1/memory/observations`。这一步自动触发，但它只创建 `pending` observation。
+- 自动抽取生成记忆：需要 extraction worker 或离线任务消费 observation 后再写入 `source_type=auto_extracted` 的 memory item。当前 Go 首发服务端尚未内置常驻 worker，因此普通对话不会仅因为 observation 上报就自动出现在 Dashboard 记忆治理列表中。
 
 ### Review queue
 
@@ -406,20 +423,56 @@ Review 证据：
 - conflict/PII 标记
 - source trace
 
+### Dashboard 记忆治理
+
+Team Cloud Go Dashboard 的“记忆治理”页用于管理已经进入团队记忆库的 `team_shared` 记忆：
+
+- 团队记忆库列表展示内容、状态、版本、`memory_type`、`sensitivity` 和来源标签。
+- 自动抽取记忆使用 `source_type=auto_extracted`，并通过 `source_member_id` 标记来源成员。
+- 管理员创建记忆使用 `source_type=admin_created`，并通过 `created_by_member_id` 标记创建者。
+- 管理员点击“新建团队记忆”后，在弹窗中创建 `status=active` 的团队记忆。
+- 管理员点击列表行“编辑”后，在弹窗中编辑任意团队记忆的内容、类型和敏感度。
+- 列表行“停用”会把状态改为 `archived`，不会删除数据。
+- 列表行“删除”会调用 `DELETE /v1/memory/{id}`，从服务端硬删除该记忆及关联 review 记录。
+- 待审队列行“审核”会打开审核弹窗，批准或拒绝都在弹窗中完成。
+
+对应 API：
+
+```bash
+curl -sS "$TEAM_CLOUD_URL/v1/memory?org_id=hermes-labs&scope=team_shared&status=active" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN"
+
+curl -sS -X POST "$TEAM_CLOUD_URL/v1/memory" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"org_id":"hermes-labs","scope":"team_shared","status":"active","source_type":"admin_created","memory_type":"policy","sensitivity":"normal","content":"生产事故首响阶段必须明确 owner。"}'
+
+curl -sS -X PATCH "$TEAM_CLOUD_URL/v1/memory/mem-123" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"content":"生产事故首响阶段必须明确 accountable owner。","memory_type":"policy","sensitivity":"normal"}'
+
+curl -sS -X POST "$TEAM_CLOUD_URL/v1/memory/mem-123/disable" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN"
+
+curl -sS -X DELETE "$TEAM_CLOUD_URL/v1/memory/mem-123" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN"
+```
+
 ## 审计、授权和工具策略 API
 
 Go 服务端新增治理 API：
 
 ```bash
 curl -sS "$TEAM_CLOUD_URL/v1/audit/events?org_id=hermes-labs" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN"
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN"
 ```
 
 写入授权关系：
 
 ```bash
 curl -sS -X PUT "$TEAM_CLOUD_URL/v1/authz/relationships" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "org_id": "hermes-labs",
@@ -436,7 +489,7 @@ curl -sS -X PUT "$TEAM_CLOUD_URL/v1/authz/relationships" \
 
 ```bash
 curl -sS -X POST "$TEAM_CLOUD_URL/v1/authz/check" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "org_id": "hermes-labs",
@@ -452,23 +505,23 @@ curl -sS -X POST "$TEAM_CLOUD_URL/v1/authz/check" \
 
 ```bash
 curl -sS -X POST "$TEAM_CLOUD_URL/v1/tool-policy/evaluate" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"org_id":"hermes-labs","member_id":"hermes-labs:alice","tool_name":"terminal","risk_level":"destructive"}'
 ```
 
 当前 Go 服务提供 `local` 和 `spicedb_http` 两种授权模式。生产部署使用 `TEAM_CLOUD_AUTHZ_MODE=spicedb_http` 接入远程 SpiceDB/Authzed compatible HTTP API；Go 版不依赖会提升 toolchain 的 gRPC SDK。
 
-## 个人记忆与团队记忆两重记忆序列
+## 个人记忆与团队记忆运行时边界
 
-运行时 prefetch 同时处理两条序列：
+运行时存在两条记忆序列，但职责不同：
 
-| 序列 | scope | 过滤方式 | 默认注入 |
+| 序列 | 存储位置 | 查询方式 | 默认注入 |
 | --- | --- | --- | --- |
-| 个人记忆 | `personal` | `org_id + subject_member_id` | 单人会话注入 |
-| 团队记忆 | `team_shared` | `org_id + team_id/project_id + SpiceDB read_team` | 团队上下文注入 |
+| 个人记忆 | 本地 Hermes profile `memories/` | Hermes 本地记忆系统 | 当前个人会话 |
+| 团队记忆 | Team Cloud Go PostgreSQL `team_shared` | TeamMemoryProvider 调用 `/v1/memory/prefetch` | 团队上下文 |
 
-prefetch 请求包含：
+Team Cloud prefetch 请求包含：
 
 - `query`
 - `query_embedding`
@@ -477,7 +530,18 @@ prefetch 请求包含：
 - `team_id`
 - `project_id`
 - `limit`
-- `include_personal`
+- `include_personal=false`
+
+### 自动查询和加载时机
+
+Team Cloud 记忆加载发生在每个 agent turn 的模型调用前：
+
+1. `AIAgent.run_conversation()` 收到用户消息后，先调用 `MemoryManager.on_turn_start()`。
+2. 随后调用 `MemoryManager.prefetch_all(original_user_message)`。
+3. `TeamMemoryProvider.prefetch()` 调用 Team Cloud Go `/v1/memory/prefetch`。
+4. 服务端按 `team_id/project_id` 和 `read_team` 权限返回 team_shared 记忆。
+5. 返回结果被格式化为 `Team Cloud memory`，再包进 `<memory-context>` 注入本轮消息上下文。
+6. 中断 turn 不会在结束时写 observation；成功完成的 turn 会在最后调用 `sync_turn()` 和 `queue_prefetch_all()`。
 
 写入 memory 时可传入 `embedding`。Go 服务端 PostgreSQL schema 使用 pgvector `embedding vector(1536)`，prefetch 在提供 `query_embedding` 时按 cosine similarity 排序；不提供向量时回退到文本 token 匹配。
 
@@ -485,7 +549,7 @@ Go 服务端 API 示例：
 
 ```bash
 curl -sS -X POST "$TEAM_CLOUD_URL/v1/memory/prefetch" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "deployment convention",
@@ -493,106 +557,108 @@ curl -sS -X POST "$TEAM_CLOUD_URL/v1/memory/prefetch" \
     "member_id": "hermes-labs:alice",
     "team_id": "hermes-labs:platform",
     "project_id": "project-1",
-    "include_personal": true,
+    "include_personal": false,
     "limit": 8
   }'
 ```
 
-共享群聊或无法明确 actor 的会话应设置：
+这样 Team Cloud 只召回 team_shared，避免个人记忆进入云端团队上下文。
 
-```json
-{
-  "personal_memory_enabled": false
-}
-```
+## 本地 memory/soul 定时备份
 
-这样只召回 team_shared，避免个人记忆泄漏到共享上下文。
-
-## 本地记忆定时备份
-
-本地记忆定时备份覆盖个人记忆，不覆盖未授权团队共享内容。备份链路由 backup policy、backup job、encrypted JSONL exporter 和 MinIO manifest 组成。
-
-### 配置备份策略
-
-管理员或成员设置 personal backup policy：
-
-- enabled：是否启用。
-- schedule：定时周期。
-- retention_days：保留天数。
-- encryption_key_ref：加密密钥引用。
-- target：MinIO bucket/object prefix。
-
-备份策略写入 `backup_policies`，Go 服务端调度器按 `TEAM_CLOUD_BACKUP_SCHEDULER_INTERVAL_SECONDS` 扫描 enabled policy 并生成 `backup_jobs`。调度器尊重 `cadence`，只执行 `next_run_at` 已到期或尚未运行过的 policy；成功后写入 `last_run_at`/`next_run_at`。每次生成 backup job 后会按 `retention_count` 将更旧的 job 标记为 `pruned`。需要外部调度时，也可以保留 `TEAM_CLOUD_BACKUP_SCHEDULER_ENABLED=false`，由 Kubernetes CronJob 或运维工具调用 `POST /v1/backups/personal/run`。
-
-Go 服务端当前提供个人备份策略 API：
-
-```bash
-curl -sS -X PUT "$TEAM_CLOUD_URL/v1/me/memory-backup-policy" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"org_id":"hermes-labs","member_id":"hermes-labs:alice","cadence":"daily","enabled":true,"retention_count":7}'
-```
-
-### 立即备份
-
-成员可通过工具触发：
-
-```json
-{
-  "tool": "team_memory_backup_now",
-  "args": {}
-}
-```
-
-TeamMemoryProvider 调用：
+本地个人记忆和本地人格备份由 Hermes CLI `/cloud-backup` 负责，不经过 Team Cloud：
 
 ```text
-POST /v1/backups/personal/run
+/cloud-backup status
+/cloud-backup config --endpoint http://minio.local:9000 --bucket hermes-personal-backups --region us-east-1 --root-prefix alice
+/cloud-backup memory schedule weekly
+/cloud-backup memory backup
+/cloud-backup memory history
+/cloud-backup memory restore alice/profiles/default/memory/2026/05/20260524T084500Z-personal-memory.json
+/cloud-backup soul schedule weekly
+/cloud-backup soul backup
+/cloud-backup soul history
+/cloud-backup soul restore alice/profiles/default/soul/2026/05/20260524T084500Z-local-soul.json
 ```
 
-请求上下文：
-
-- `org_id`
-- `member_id`
-
-权限检查：
-
-- action：`backup.create`
-- actor：当前 member
-- resource：personal backup
-
-### 备份输出
-
-备份输出为加密 JSONL：
-
-- content
-- memory_type
-- sensitivity
-- metadata
-- checksum
-- created_at
-- source trace
-
-对象写入 MinIO 后登记 object manifest。Go 服务端在 `TEAM_CLOUD_BACKUP_OBJECT_MODE=s3` 时生成 AES-256-GCM 加密 JSONL，通过 S3 Signature V4 path-style PUT 上传，并在 backup job manifest 中记录 `object_store`、`bucket`、`object_key`、`format`、`encryption` 和 `checksum_sha256`。restore preview/execute 会从 S3/MinIO 读取对象，校验 checksum，解密 JSONL 后刷新恢复快照；数据库中的 backup items 只是缓存和开发模式 fallback。
-
-Go 服务端备份恢复 API：
+同样能力也可以使用顶层命令：
 
 ```bash
-curl -sS -X POST "$TEAM_CLOUD_URL/v1/backups/personal/run" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"org_id":"hermes-labs","member_id":"hermes-labs:alice"}'
-
-curl -sS -X POST "$TEAM_CLOUD_URL/v1/backups/personal/$BACKUP_ID/restore-preview" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"member_id":"hermes-labs:alice","mode":"merge"}'
-
-curl -sS -X POST "$TEAM_CLOUD_URL/v1/backups/personal/$BACKUP_ID/restore-execute" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"member_id":"hermes-labs:alice","mode":"merge"}'
+hermes cloud-backup status
+hermes cloud-backup memory backup
+hermes cloud-backup soul backup
+hermes cloud-backup memory history
+hermes cloud-backup soul history
 ```
+
+备份对象格式为 `hermes-cloud-backup-memory-v1` 和 `hermes-cloud-backup-soul-v1` JSON。memory 内容来自当前 profile 的 `memories/` 目录，soul 内容来自当前 profile 的 `SOUL.md`。恢复会写回当前 profile，因此恢复前必须确认 `HERMES_HOME` 或当前 profile。
+
+## 团队级备份管理
+
+Team Cloud Dashboard “备份管理”只管理团队级资源，不管理成员个人记忆或本地人格。当前包含两类备份：
+
+- 团队记忆：读取/保存策略、查看历史、立即备份、先 preview 再 restore execute。
+- 团队父人格：读取/保存策略、查看历史、立即备份、先 preview 再 restore execute。
+
+团队父人格正文的创建和编辑不在“备份管理”中完成，而是在 Dashboard 左侧“团队父人格中心”中完成。该中心展示管理态内容、runtime 读取结果、版本、checksum、更新时间和更新人；备份管理只负责备份策略、历史、立即备份和恢复。
+
+Go 服务端团队记忆备份 API：
+
+```bash
+curl -sS -X PUT "$TEAM_CLOUD_URL/v1/team-memory-backup-policy" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"org_id":"hermes-labs","cadence":"daily","enabled":true,"retention_count":7}'
+
+curl -sS -X POST "$TEAM_CLOUD_URL/v1/backups/team/run" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"org_id":"hermes-labs"}'
+
+curl -sS "$TEAM_CLOUD_URL/v1/backups/team?org_id=hermes-labs" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN"
+
+curl -sS -X POST "$TEAM_CLOUD_URL/v1/backups/team/$BACKUP_ID/restore-preview" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"org_id":"hermes-labs","mode":"merge"}'
+
+curl -sS -X POST "$TEAM_CLOUD_URL/v1/backups/team/$BACKUP_ID/restore-execute" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"org_id":"hermes-labs","mode":"merge"}'
+```
+
+恢复按团队记忆原始 `id` 做 insert-or-update；同一备份多次恢复不会在 PostgreSQL 中产生同 id 的重复记录。
+
+Go 服务端团队父人格备份 API：
+
+```bash
+curl -sS -X PUT "$TEAM_CLOUD_URL/v1/team-soul-backup-policy" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"org_id":"hermes-labs","cadence":"weekly","enabled":true,"retention_count":3}'
+
+curl -sS -X POST "$TEAM_CLOUD_URL/v1/backups/team-soul/run" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"org_id":"hermes-labs","team_id":"hermes-labs"}'
+
+curl -sS "$TEAM_CLOUD_URL/v1/backups/team-soul?org_id=hermes-labs" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN"
+
+curl -sS -X POST "$TEAM_CLOUD_URL/v1/backups/team-soul/$SOUL_BACKUP_ID/restore-preview" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"org_id":"hermes-labs","mode":"merge"}'
+
+curl -sS -X POST "$TEAM_CLOUD_URL/v1/backups/team-soul/$SOUL_BACKUP_ID/restore-execute" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"org_id":"hermes-labs","mode":"merge"}'
+```
+
+团队父人格恢复按 `org_id + team_id` 更新 active soul，不会生成多个 active 父人格版本。
 
 ## 备份恢复和组织导出
 
@@ -602,9 +668,9 @@ curl -sS -X POST "$TEAM_CLOUD_URL/v1/backups/personal/$BACKUP_ID/restore-execute
 
 1. 解密备份到 restore staging。
 2. 校验 checksum。
-3. 与现有 personal memory 比较。
-4. 输出 action：create、skip、conflict。
-5. 管理员或成员审阅 preview。
+3. 与现有 team_shared memory 的原始 `id` 比较。
+4. 输出 action：insert、update、skip。
+5. API 调用方可以审阅 preview 响应；Dashboard 会在恢复操作中自动先调用 preview gate，再执行 restore execute。
 
 ### Restore execute
 
@@ -614,7 +680,7 @@ curl -sS -X POST "$TEAM_CLOUD_URL/v1/backups/personal/$BACKUP_ID/restore-execute
 - `overwrite`
 - `archive_current_then_restore`
 
-Go 服务端 `merge` 会跳过已存在的同内容 personal memory；`overwrite` 会先将当前 active personal memory 标记为 deleted，再恢复备份；`archive_current_then_restore` 会先将当前 active personal memory 标记为 archived，再恢复备份。
+Go 服务端 `merge` 以团队记忆原始 `id` 为唯一键执行 insert-or-update；`overwrite` 会先将当前 active team_shared memory 标记为 deleted，再恢复备份；`archive_current_then_restore` 会先将当前 active team_shared memory 标记为 archived，再恢复备份。团队父人格恢复使用同样的 preview gate，并按 `org_id + team_id` upsert active soul。
 
 执行后写入：
 
@@ -628,50 +694,30 @@ Go 服务端 `merge` 会跳过已存在的同内容 personal memory；`overwrite
 组织导出由管理员发起，覆盖组织范围内允许导出的资源：
 
 - organization metadata
-- teams/projects
+- team-space metadata and projects
 - approved team_shared memory
 - cloud session summary
 - SpiceDB relationship snapshot
 - MinIO object manifest
 
-导出不应包含其他成员的 personal memory，除非满足明确的数据治理授权。
+导出不包含成员个人记忆；个人记忆只存在于成员本地 Hermes profile。
 
 Go 服务端组织导出：
 
 ```bash
 curl -sS -X POST "$TEAM_CLOUD_URL/v1/exports/org" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
+  -H "Authorization: Bearer $TEAM_CLOUD_DASHBOARD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"org_id":"hermes-labs"}'
 ```
 
-返回值中 `personal_count` 必须为 `0`。
+返回值中 `personal_count` 必须为 `0`；这是兼容历史导出字段的固定值。
 
 ### 删除和保留
 
-删除请求流程：
+Team Cloud Go 不再接受 `deletion_scope=personal_memory`；成员个人记忆文件不在 Team Cloud 内，成员如需删除个人记忆，应在本地 Hermes profile 中处理。团队记忆的停用和硬删除通过 Dashboard “记忆治理”或 `POST /v1/memory/{id}/disable`、`DELETE /v1/memory/{id}` 执行，并写入审计事件。
 
-1. 创建 deletion request。
-2. 校验 actor 权限。
-3. 进入等待期或审批期。
-4. hard delete worker 清理 PostgreSQL、SpiceDB、MinIO。
-5. audit 保留删除证据。
-
-retention policies 统一控制 memory、backup、audit 和 export 保留周期。
-
-Go 服务端删除请求：
-
-```bash
-curl -sS -X POST "$TEAM_CLOUD_URL/v1/deletion-requests" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"org_id":"hermes-labs","target_member_id":"hermes-labs:alice","requested_by":"hermes-labs:alice","deletion_scope":"personal_memory","reason":"member requested deletion"}'
-
-curl -sS -X POST "$TEAM_CLOUD_URL/v1/deletion-requests/$REQUEST_ID/execute" \
-  -H "Authorization: Bearer $TEAM_CLOUD_SERVICE_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"actor_member_id":"hermes-labs:alice"}'
-```
+retention policies 控制团队 memory、team soul backup、audit 和 export 的保留周期。
 
 ## 权限、角色和 Permission Explorer
 
@@ -731,59 +777,11 @@ break-glass 仅用于紧急运维：
 - 必须写审计。
 - 结束后复盘。
 
-## 迁移 SessionDB 和 legacy memory provider
+## 历史数据导入策略
 
-### SessionDB 迁移
+Go Team Cloud 是首次上线目标，不提供旧 Python `team_cloud` 的 SessionDB 或历史记忆 provider 导入脚本。成员个人记忆和本地人格保留在各自 Hermes profile 中，通过 `/cloud-backup memory|soul` 做 MinIO/S3 备份和恢复；Team Cloud 只管理团队记忆、团队父人格和团队级备份。
 
-SessionDB 导入使用：
-
-```bash
-scripts/team-cloud-import-sessiondb.py \
-  --db ~/.hermes/state.db \
-  --org-id org-1 \
-  --team-id team-1 \
-  --project-id project-1 \
-  --identity-map identity-map.json \
-  --dry-run
-```
-
-`identity_map` 将本地 user id 映射为 Team Cloud `member_id`：
-
-```json
-{
-  "alice-local-user-id": "team-cloud-member-id"
-}
-```
-
-规则：
-
-- 未映射 identity 不导入。
-- `--dry-run` 只输出报告。
-- 导入后 cloud session 使用 `source_platform=sessiondb:<source>`。
-- 导入前先完成 backup。
-
-### legacy memory provider 迁移
-
-旧 provider 先导出为 JSONL，每行至少包含：
-
-- content
-- scope
-- member_id
-- team_id
-- metadata
-
-scope 映射：
-
-- member-owned facts -> `personal`
-- organization-approved shared facts -> `team_shared`
-
-迁移前必须运行：
-
-- unmapped identity report
-- duplicate/conflict review
-- PII/secret scan
-- isolation smoke
-- backup before cutover
+如未来需要从外部历史系统迁入团队记忆，应作为新的导入专题实现，要求先完成 identity mapping、duplicate/conflict review、PII/secret scan、isolation smoke 和 cutover 前备份；该专题不属于当前 GA 首次上线路径。
 
 ## Deployment smoke 和 GA 验证
 
@@ -821,7 +819,7 @@ scripts/team-cloud-foundation-smoke.sh
 - Casdoor OIDC discovery。
 - SpiceDB schema/check latency。
 - PostgreSQL migration status。
-- MinIO bucket/manifest。
+- 可选团队记忆对象存储 bucket/manifest。
 - backup job failure。
 - audit/event backlog。
 
@@ -839,10 +837,13 @@ scripts/team-cloud-foundation-smoke.sh
 
 - 登录失败：检查 Casdoor issuer、redirect URL、JWKS。
 - 权限拒绝：用 Permission Explorer 复现 subject/resource/permission。
-- 个人记忆不召回：检查 `personal_memory_enabled`、member_id、scope 和 prefetch response。
+- 个人记忆不召回：检查本地 Hermes profile、`memories/` 文件和本地 memory 配置；Team Cloud 不召回个人记忆。
 - 团队记忆不召回：检查 review 状态、team_id/project_id、SpiceDB read_team。
-- 备份失败：检查 backup policy、encryption key、MinIO manifest 和 notification。
-- 迁移失败：检查 `identity_map` 和 dry-run unmapped report。
+- CLI 显式新增团队记忆后 Dashboard 不显示：先确认 `/team status` 为 `mode: team`，再确认 agent 工具面包含 `team_memory_add`；如果走的是本地 `memory` 工具，说明 Team Cloud memory provider 未挂载或本轮 system prompt 未刷新。
+- 普通对话没有自动出现在 Dashboard：当前 Go 服务端只自动保存 observation，不内置常驻 extraction worker；需要显式 `team_memory_add` 或后续抽取任务生成 memory item。
+- 团队备份失败：检查团队 backup policy、encryption key、可选对象存储 manifest 和 backup job。
+- CLI 本地备份失败：检查 `/cloud-backup status`、MinIO/S3 endpoint、bucket、root prefix、resource prefix 和 access/secret env key。
+- 外部历史系统导入失败：按独立导入专题的 identity mapping、冲突检查和审计记录排查；当前 GA 首次上线不内置 legacy 导入脚本。
 
 ### Post-GA backlog
 
@@ -858,12 +859,12 @@ scripts/team-cloud-foundation-smoke.sh
 ## 附录：关键命令
 
 ```bash
-cd team_cloud_go && go test ./...
-cd team_cloud_go && go vet ./...
+cd team_cloud && go test ./...
+cd team_cloud && go vet ./...
+cd team_cloud/dashboard && npm test -- --run
+cd team_cloud/dashboard && npm run type-check
 scripts/team-cloud-foundation-smoke.sh
-scripts/team-cloud-import-sessiondb.py --dry-run --db ~/.hermes/state.db --org-id org-1 --team-id team-1 --project-id project-1 --identity-map identity-map.json
-scripts/team-cloud-ga-sign-off.py --output teamDoc/GADoc/artifacts/release/team-cloud-ga-sign-off-v0.json
-scripts/team-cloud-post-ga-backlog.py --output teamDoc/GADoc/artifacts/release/team-cloud-post-ga-backlog-v0.json
+scripts/team-cloud-isolation-smoke.sh
 ```
 
 ## 附录：关键文档

@@ -212,14 +212,21 @@ definition organization {
   relation admin: user
   relation security_admin: user
   relation member: user
+  relation reviewer: user
   relation guest: user
 
   permission manage = owner + admin
   permission read_audit = owner + admin + security_admin
   permission export = owner + admin
   permission delete = owner
+  permission read_team = owner + admin + member + reviewer
+  permission write_team = owner + admin
+  permission review = owner + admin + reviewer
+  permission run_agent = owner + admin + member
 }
 
+// Go Team Cloud 首发版不暴露独立 team/workgroup 资源。
+// 后续多团队/工作组扩展需要重新引入 team definition 并提供迁移。
 definition team {
   relation parent: organization
   relation admin: user

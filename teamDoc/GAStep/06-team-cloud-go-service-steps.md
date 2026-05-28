@@ -1,25 +1,25 @@
-# 06. Team Cloud Go 服务端重写步骤
+# 06. Team Cloud 服务端步骤
 
-本文件是 GA 后新增需求的补充任务拆解。由于 Python `team_cloud/` 从未上线部署，Go 版允许破坏性更新并作为首次上线服务端；迁移期间不修改 `team_cloud/` 目录。
+本文件是 GA 后新增需求的补充任务拆解。当前 `team_cloud/` 已经是 Go 版 Team Cloud 服务端源码；旧 Python 服务端已经删除，所有后续任务均以该目录为准。
 
 ## 执行原则
 
-- `team_cloud_go/` 是独立 Go module，未来云端部署默认使用该目录构建镜像。
-- Python `team_cloud/` 只作为参考实现，不再作为 GA 部署目标。
+- `team_cloud/` 是独立 Go module，云端部署默认使用该目录构建镜像。
+- 不再保留旧 Team Cloud 参考实现、部署脚本或测试入口。
 - 生产环境必须使用 PostgreSQL 后端；内存后端仅用于开发和单元测试。
-- HTTP API 默认启动即暴露团队管理、双层记忆、review queue 和个人备份策略能力。
+- HTTP API 默认启动即暴露团队管理、团队记忆、review queue、团队记忆备份和团队父人格管理能力；个人记忆和本地人格备份由 Hermes CLI `/cloud-backup memory|soul` 管理。
 - Kubernetes manifest 必须包含 readiness/liveness probe、非 root 运行、只读根文件系统和 Secret 注入。
 
 ## 工作包
 
 | ID | 工作包 | 主要产出 | 前置 | 状态 |
 | --- | --- | --- | --- | --- |
-| GTC-01 | Go 重写范围冻结 | 明确 Python `team_cloud/` 不再作为上线服务端，新增 Go module 边界 | P5 | Done |
-| GTC-02 | Go module 和 HTTP 框架 | `team_cloud_go/go.mod`、`cmd/team-cloud-server`、`internal/httpapi` | GTC-01 | Done |
+| GTC-01 | Team Cloud Go 范围冻结 | 明确 `team_cloud/` 作为唯一上线服务端和 Go module 边界 | P5 | Done |
+| GTC-02 | Go module 和 HTTP 框架 | `team_cloud/go.mod`、`cmd/team-cloud-server`、`internal/httpapi` | GTC-01 | Done |
 | GTC-03 | 服务 token 和健康检查 | `/healthz`、`/readyz`、`/metrics`、Bearer/Header token 鉴权 | GTC-02 | Done |
 | GTC-04 | 组织/团队/成员 API | organization、team、member invite/list/disable API | GTC-03 | Done |
-| GTC-05 | 双层记忆 API | personal/team_shared CRUD、prefetch、observation、review approve/reject | GTC-04 | Done |
-| GTC-06 | 个人记忆备份策略 API | `/v1/me/memory-backup-policy` 查询和更新 | GTC-05 | Done |
+| GTC-05 | 团队记忆 API | team_shared CRUD、prefetch、observation、review approve/reject | GTC-04 | Done |
+| GTC-06 | 历史个人备份策略 API 退役 | `/v1/me/memory-backup-policy` 已在当前 GA 主路径退役，个人备份转由 CLI `/cloud-backup` | GTC-05 | Done |
 | GTC-07 | PostgreSQL 持久化后端 | `internal/store/postgres`、启动自动 migration、readyz backend ping | GTC-05 | Done |
 | GTC-08 | 容器和 Kubernetes 资产 | `Dockerfile`、`deploy/kubernetes/team-cloud-go.yaml` | GTC-07 | Done |
 | GTC-09 | 技术文档更新 | `teamDoc` README、技术设计、backlog、release manual | GTC-08 | Done |
@@ -27,7 +27,7 @@
 | GTC-11 | Casdoor 风格 JWT 鉴权 | RS256/JWKS issuer、audience、expiration 校验 | GTC-03 | Done |
 | GTC-12 | 授权关系和权限检查 API | relationship write、permission check、解释路径 | GTC-04 | Done |
 | GTC-13 | Audit 事件 API | 关键管理、记忆、备份、删除、工具策略操作留痕 | GTC-04 | Done |
-| GTC-14 | 个人备份恢复 API | backup run、restore preview、restore execute、checksum | GTC-06 | Done |
+| GTC-14 | 个人备份恢复 API 退役验证 | Go 服务不再注册 `/v1/backups/personal/*`，个人 memory/soul 备份由 CLI `/cloud-backup` 负责 | GTC-06 | Done |
 | GTC-15 | 组织导出和删除请求 API | org export 不含 personal memory、personal deletion execute | GTC-14 | Done |
 | GTC-16 | 工具策略和 runtime 事件 API | tool risk evaluation、approval_required、session/runtime event bridge | GTC-13 | Done |
 | GTC-17 | PostgreSQL schema 扩展 | audit、relationship、backup、export、deletion、tool、session、runtime 表 | GTC-16 | Done |
@@ -46,18 +46,18 @@
 
 ## 验收口径
 
-- `cd team_cloud_go && go test ./...` 通过。
-- `cd team_cloud_go && go vet ./...` 通过。
-- `cd team_cloud_go && go build ./cmd/team-cloud-server` 通过。
-- `team_cloud_go/deploy/kubernetes/team-cloud-go.yaml` YAML 解析通过。
+- `cd team_cloud && go test ./...` 通过。
+- `cd team_cloud && go vet ./...` 通过。
+- `cd team_cloud && go build -o /tmp/hermes-team-cloud-server ./cmd/team-cloud-server` 通过。
+- `team_cloud/deploy/kubernetes/team-cloud-go.yaml` YAML 解析通过。
 - `TEAM_CLOUD_DATABASE_URL` 设置后服务使用 PostgreSQL 后端；为空时使用内存后端。
-- K8s deployment 通过 Secret 注入 `TEAM_CLOUD_DATABASE_URL` 和 `TEAM_CLOUD_SERVICE_TOKEN`。
+- K8s deployment 通过 Secret 注入 `TEAM_CLOUD_DATABASE_URL`、Redis 凭据；对象存储凭据仅在启用 S3/MinIO 团队记忆备份时注入。
 - K8s deployment 显式配置 `TEAM_CLOUD_CASDOOR_ISSUER`、`TEAM_CLOUD_CASDOOR_AUDIENCE` 和 `TEAM_CLOUD_CASDOOR_JWKS_URL`。
 - 生产环境可通过 `TEAM_CLOUD_AUTHZ_MODE=spicedb_http` 使用远程 SpiceDB/Authzed compatible HTTP API；远程授权不可用时 readiness fail closed。
 - JWT 业务请求必须绑定 `hermes_org_id` 和 `hermes_member_id`，禁止通过 payload/query 伪造其他 org/member。
 - `team_shared` prefetch 必须经 `read_team` 授权过滤。
 - PostgreSQL schema 必须包含 pgvector extension、memory embedding 字段和向量索引；prefetch 必须支持 `query_embedding` 语义排序。
-- 生产环境可通过 `TEAM_CLOUD_BACKUP_OBJECT_MODE=s3` 上传 AES-GCM 加密 JSONL 到 S3/MinIO，并写入 backup object manifest；服务端调度器会扫描 enabled policy；restore execute 必须先完成 restore preview。
+- 生产环境可通过 `TEAM_CLOUD_BACKUP_OBJECT_MODE=s3` 上传团队记忆 AES-GCM 加密 JSONL 到 S3/MinIO，并写入 backup object manifest；服务端调度器会扫描 enabled team memory policy；restore execute 必须先完成 restore preview。
 - 高风险治理 API 必须先按资源归属取数，再使用 JWT principal 和 SpiceDB/Authzed 权限判断；不得信任请求体中的 org/member/actor 字段完成授权。
 - 对象存储模式下 restore preview/execute 必须读取并校验 S3/MinIO 加密对象，数据库 snapshot 只能作为缓存。
 - PostgreSQL 后端提供 query embedding 时必须使用 pgvector SQL 排序路径，不能只在应用层排序。

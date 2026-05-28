@@ -1,5 +1,0 @@
-Hermes Team Cloud chart installed.
-
-API service: {{ include "hermes-team-cloud.fullname" . }}-api
-Web service: {{ include "hermes-team-cloud.fullname" . }}-web
-

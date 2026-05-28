@@ -21,7 +21,7 @@
 
 - `enterprise_team_cloud`：开箱即用企业版 Team Cloud 控制面。
 - `two_tier_memory`：personal 与 team_shared 双层记忆。
-- `local_memory_backup`：个人记忆定时备份、导出和恢复路径。
+- `local_cloud_backup`：个人记忆和本地人格定时备份、导出和恢复路径。
 - `casdoor_spicedb_postgres_minio_stack`：固定 Casdoor + SpiceDB + PostgreSQL/pgvector + MinIO 架构。
 - `tool_policy_and_audit`：高危工具策略、审批和审计。
 
@@ -37,9 +37,9 @@
 
 | ID | 说明 |
 | --- | --- |
-| `compose` | 本地 GA 安装使用 `deploy/team-cloud/compose.yaml`。 |
-| `helm` | Kubernetes 安装使用 `deploy/team-cloud/helm/hermes-team-cloud/Chart.yaml`。 |
-| `offline_bundle` | 离线安装必须携带 manifest、镜像和 checksums。 |
+| `kubernetes_manifest` | Kubernetes 安装使用 `team_cloud/deploy/kubernetes/team-cloud-go.yaml`。 |
+| `minikube` | 本地 Kubernetes 验收按 `teamDoc/releaseManual/team-cloud-go-minikube-dashboard-manual.md` 执行。 |
+| `offline_bundle` | 离线资料包由 `scripts/team-cloud-offline-bundle.sh` 生成，必须携带 checksums 和可选镜像。 |
 | `migration_checksums` | 升级和回滚前后都要校验 SQL migration checksums。 |
 
 ## known_issues

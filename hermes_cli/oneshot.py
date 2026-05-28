@@ -29,6 +29,15 @@ from contextlib import redirect_stderr, redirect_stdout
 from typing import Optional
 
 
+def _resolve_oneshot_team_context() -> dict | None:
+    try:
+        from hermes_cli.team_cloud import resolve_cli_team_context
+
+        return resolve_cli_team_context()
+    except Exception:
+        return None
+
+
 def _normalize_toolsets(toolsets: object = None) -> list[str] | None:
     if not toolsets:
         return None
@@ -320,6 +329,7 @@ def _run_agent(
         quiet_mode=True,
         platform="cli",
         session_db=session_db,
+        team_context=_resolve_oneshot_team_context(),
         credential_pool=runtime.get("credential_pool"),
         fallback_model=_fb or None,
         # Interactive callbacks are intentionally NOT wired beyond this

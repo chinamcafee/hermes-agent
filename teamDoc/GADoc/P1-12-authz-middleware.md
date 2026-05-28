@@ -6,7 +6,7 @@
 
 ## 目标
 
-本步骤原实现 Team API 的 FastAPI 权限 gate。Go 服务端追加迁移后，Python `team_cloud/` 中的 middleware 仅作为参考；首次上线应在 `team_cloud_go/` 的 HTTP handler/middleware 中承载同等 fail closed 语义。middleware 按 method/path 匹配规则，将请求主体和资源映射为 SpiceDB check，遇到 deny、SpiceDB error 或 relationship outbox 未 applied 时 fail closed，并生成稳定 permission cache key。
+本步骤原实现 Team API 的 FastAPI 权限 gate。Go 服务端追加迁移后，Python `team_cloud/` 中的 middleware 仅作为参考；首次上线应在 `team_cloud/` 的 HTTP handler/middleware 中承载同等 fail closed 语义。middleware 按 method/path 匹配规则，将请求主体和资源映射为 SpiceDB check，遇到 deny、SpiceDB error 或 relationship outbox 未 applied 时 fail closed，并生成稳定 permission cache key。
 
 ## 工件
 

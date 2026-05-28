@@ -117,3 +117,59 @@ def test_aiagent_omits_team_context_when_not_configured():
 
     assert agent.team_context is None
     assert "team_context" not in provider.init_kwargs
+
+
+def test_aiagent_auto_activates_team_cloud_memory_provider_for_cli_team_mode():
+    cfg = {
+        "memory": {"provider": ""},
+        "team_cloud": {
+            "enabled": True,
+            "url": "http://team-cloud.example",
+            "default_org_id": "org-1",
+            "default_team_id": "team-1",
+            "default_project_id": "project-1",
+            "default_member_id": "alice",
+            "token_env": "HERMES_TEAM_CLOUD_SESSION_TOKEN",
+        },
+        "agent": {},
+    }
+    team_context = {
+        "org_id": "org-1",
+        "team_id": "team-1",
+        "project_id": "project-1",
+        "member_id": "alice",
+    }
+
+    with (
+        patch("hermes_cli.config.load_config", return_value=cfg),
+        patch("hermes_cli.config.save_config"),
+        patch("hermes_cli.team_cloud.load_env", return_value={"HERMES_TEAM_CLOUD_SESSION_TOKEN": "session-token"}),
+        patch("plugins.memory.load_memory_provider") as load_memory_provider,
+        patch("agent.model_metadata.get_model_context_length", return_value=204_800),
+        patch(
+            "run_agent.get_tool_definitions",
+            return_value=[{"type": "function", "function": {"name": "memory"}}],
+        ),
+        patch("run_agent.check_toolset_requirements", return_value={}),
+        patch("run_agent.OpenAI"),
+    ):
+        from run_agent import AIAgent
+
+        agent = AIAgent(
+            api_key="test-key-1234567890",
+            base_url="https://openrouter.ai/api/v1",
+            enabled_toolsets=["hermes-cli"],
+            quiet_mode=True,
+            skip_context_files=True,
+            skip_memory=False,
+            team_context=team_context,
+        )
+
+    load_memory_provider.assert_not_called()
+    assert agent._memory_manager is not None
+    provider = agent._memory_manager.get_provider("team_cloud")
+    assert provider is not None
+    assert provider.config.service_token == "session-token"
+    assert provider.config.team_context.org_id == "org-1"
+    assert "team_memory_add" in agent.valid_tool_names
+    assert "team_memory_search" in agent.valid_tool_names

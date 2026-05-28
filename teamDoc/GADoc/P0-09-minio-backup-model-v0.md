@@ -103,7 +103,6 @@ README.md
 manifest.json
 organizations.jsonl
 members.jsonl
-teams.jsonl
 projects.jsonl
 sessions.jsonl
 memory_items.jsonl

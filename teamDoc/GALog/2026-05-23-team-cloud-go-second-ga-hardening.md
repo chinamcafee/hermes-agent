@@ -2,7 +2,7 @@
 
 ## 背景
 
-二次 GA 复核在 `team_cloud_go/` 当前实现中发现仍需补齐的阻塞项。Python `team_cloud/` 继续保持不修改，Go 服务端是首次上线部署目标。
+二次 GA 复核在 `team_cloud/` 当前实现中发现仍需补齐的阻塞项。Python `team_cloud/` 继续保持不修改，Go 服务端是首次上线部署目标。
 
 ## GTC-24 高风险治理 API 授权硬化
 
@@ -54,14 +54,14 @@
 
 已运行并通过：
 
-- `cd team_cloud_go && go test ./...`
-- `cd team_cloud_go && go vet ./...`
-- `cd team_cloud_go && go build ./cmd/team-cloud-server`
-- `cd team_cloud_go && ruby -e 'require "yaml"; docs = YAML.load_stream(File.read("deploy/kubernetes/team-cloud-go.yaml")); puts "kubernetes yaml ok: #{docs.map { |d| d["kind"] }.join(",")}"'`
-- `git diff --check -- team_cloud_go teamDoc`
-- `rg -n 'authzed|golangci|mage|go1\.25|v0\.45\.0|v0\.36\.0' team_cloud_go/go.mod team_cloud_go/go.sum` 无命中。
+- `cd team_cloud && go test ./...`
+- `cd team_cloud && go vet ./...`
+- `cd team_cloud && go build ./cmd/team-cloud-server`
+- `cd team_cloud && ruby -e 'require "yaml"; docs = YAML.load_stream(File.read("deploy/kubernetes/team-cloud-go.yaml")); puts "kubernetes yaml ok: #{docs.map { |d| d["kind"] }.join(",")}"'`
+- `git diff --check -- team_cloud teamDoc`
+- `rg -n 'authzed|golangci|mage|go1\.25|v0\.45\.0|v0\.36\.0' team_cloud/go.mod team_cloud/go.sum` 无命中。
 
-构建产物 `team_cloud_go/team-cloud-server` 已清理。
+构建产物 `team_cloud/team-cloud-server` 已清理。
 
 ## 状态
 

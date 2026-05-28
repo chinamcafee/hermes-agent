@@ -999,7 +999,13 @@ def get_model_options():
     try:
         from hermes_cli.inventory import build_models_payload, load_picker_context
 
-        return build_models_payload(load_picker_context(), max_models=50)
+        return build_models_payload(
+            load_picker_context(),
+            include_unconfigured=True,
+            picker_hints=True,
+            canonical_order=True,
+            max_models=50,
+        )
     except Exception:
         _log.exception("GET /api/model/options failed")
         raise HTTPException(status_code=500, detail="Failed to list model options")
@@ -2591,6 +2597,21 @@ def _cron_profile_home(profile: Optional[str]) -> Tuple[str, Path]:
     return canon, profiles_mod.get_profile_dir(canon)
 
 
+def _call_with_profile_home(profile: Optional[str], func, *args, **kwargs):
+    """Run a profile-aware dashboard helper with HERMES_HOME scoped to profile."""
+    if profile is None:
+        return func(*args, **kwargs)
+
+    _profile_name, home = _cron_profile_home(profile)
+    from hermes_constants import reset_hermes_home_override, set_hermes_home_override
+
+    token = set_hermes_home_override(home)
+    try:
+        return func(*args, **kwargs)
+    finally:
+        reset_hermes_home_override(token)
+
+
 def _annotate_cron_job(job: Dict[str, Any], profile: str, home: Path) -> Dict[str, Any]:
     annotated = dict(job)
     annotated["profile"] = profile
@@ -2759,6 +2780,46 @@ class ProfileRename(BaseModel):
 
 class ProfileSoulUpdate(BaseModel):
     content: str
+
+
+class SoulLocalUpdate(BaseModel):
+    content: str
+
+
+class CloudBackupRunBody(BaseModel):
+    resource: str
+
+
+class CloudBackupScheduleBody(BaseModel):
+    resource: str
+    cadence: str
+
+
+class TeamConnectBody(BaseModel):
+    url: str
+
+
+class TeamLoginBody(BaseModel):
+    org: str
+    user: str
+    password: str
+    team: str = ""
+    project: str = ""
+
+
+class TeamUseBody(BaseModel):
+    org: str
+    team: str = ""
+    project: str = ""
+    member: str = ""
+
+
+class TeamTokenBody(BaseModel):
+    token: str
+
+
+class TeamBreakerBody(BaseModel):
+    action: str
 
 
 def _profile_attr(info, name: str, default: Any = None) -> Any:
@@ -2991,6 +3052,230 @@ async def update_profile_soul(name: str, body: ProfileSoulUpdate):
         _log.exception("PUT /api/profiles/%s/soul failed", name)
         raise HTTPException(status_code=500, detail=f"Could not write SOUL.md: {e}")
     return {"ok": True}
+
+
+@app.get("/api/team/status")
+async def api_team_status(profile: Optional[str] = None):
+    try:
+        from hermes_cli.team_cloud import team_status
+
+        return _call_with_profile_home(profile, team_status, print_fn=lambda _: None)
+    except Exception as e:
+        _log.exception("GET /api/team/status failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/team/connect")
+async def api_team_connect(body: TeamConnectBody, profile: Optional[str] = None):
+    try:
+        from hermes_cli.team_cloud import connect_team_cloud
+
+        return _call_with_profile_home(
+            profile,
+            connect_team_cloud,
+            body.url,
+            print_fn=lambda _: None,
+        )
+    except Exception as e:
+        _log.exception("POST /api/team/connect failed")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/team/login")
+async def api_team_login(body: TeamLoginBody, profile: Optional[str] = None):
+    try:
+        from hermes_cli.team_cloud import login_team_cloud
+
+        return _call_with_profile_home(
+            profile,
+            login_team_cloud,
+            org_id=body.org,
+            user_id=body.user,
+            password=body.password,
+            team_id=body.team,
+            project_id=body.project,
+            print_fn=lambda _: None,
+        )
+    except Exception as e:
+        _log.exception("POST /api/team/login failed")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/team/use")
+async def api_team_use(body: TeamUseBody, profile: Optional[str] = None):
+    try:
+        from hermes_cli.team_cloud import team_use
+
+        return _call_with_profile_home(
+            profile,
+            team_use,
+            org_id=body.org,
+            team_id=body.team,
+            project_id=body.project,
+            member_id=body.member,
+            print_fn=lambda _: None,
+        )
+    except Exception as e:
+        _log.exception("POST /api/team/use failed")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/team/off")
+async def api_team_off(profile: Optional[str] = None):
+    try:
+        from hermes_cli.team_cloud import team_off
+
+        return _call_with_profile_home(profile, team_off, print_fn=lambda _: None)
+    except Exception as e:
+        _log.exception("POST /api/team/off failed")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/team/logout")
+async def api_team_logout(profile: Optional[str] = None):
+    try:
+        from hermes_cli.team_cloud import team_logout
+
+        return _call_with_profile_home(profile, team_logout, print_fn=lambda _: None)
+    except Exception as e:
+        _log.exception("POST /api/team/logout failed")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/team/token")
+async def api_team_token(body: TeamTokenBody, profile: Optional[str] = None):
+    try:
+        from hermes_cli.team_cloud import team_token_set
+
+        result = _call_with_profile_home(
+            profile,
+            team_token_set,
+            body.token,
+            print_fn=lambda _: None,
+        )
+        return result if isinstance(result, dict) else {"saved": True}
+    except Exception as e:
+        _log.exception("POST /api/team/token failed")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/team/breaker")
+async def api_team_breaker_status(profile: Optional[str] = None):
+    try:
+        from hermes_cli.team_cloud import team_breaker_status
+
+        return _call_with_profile_home(profile, team_breaker_status)
+    except Exception as e:
+        _log.exception("GET /api/team/breaker failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/team/breaker")
+async def api_team_breaker(body: TeamBreakerBody, profile: Optional[str] = None):
+    action = body.action.strip().lower()
+    try:
+        from hermes_cli.team_cloud import (
+            team_breaker_auto,
+            team_breaker_close,
+            team_breaker_open,
+            team_breaker_status,
+        )
+
+        if action == "status":
+            return _call_with_profile_home(profile, team_breaker_status)
+        if action == "open":
+            return _call_with_profile_home(profile, team_breaker_open, print_fn=lambda _: None)
+        if action == "close":
+            return _call_with_profile_home(profile, team_breaker_close, print_fn=lambda _: None)
+        if action == "auto":
+            return _call_with_profile_home(profile, team_breaker_auto, print_fn=lambda _: None)
+    except Exception as e:
+        _log.exception("POST /api/team/breaker failed")
+        raise HTTPException(status_code=400, detail=str(e))
+    raise HTTPException(status_code=400, detail="unsupported_team_breaker_action")
+
+
+@app.get("/api/soul/status")
+async def api_soul_status(profile: Optional[str] = None):
+    try:
+        from hermes_cli.team_soul import resolve_soul_state
+
+        return _call_with_profile_home(profile, resolve_soul_state)
+    except Exception as e:
+        _log.exception("GET /api/soul/status failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/soul/local")
+async def api_update_local_soul(body: SoulLocalUpdate, profile: Optional[str] = None):
+    try:
+        from hermes_cli.team_soul import save_local_soul
+
+        return _call_with_profile_home(profile, save_local_soul, body.content)
+    except Exception as e:
+        _log.exception("PUT /api/soul/local failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/soul/recompute")
+async def api_recompute_soul(profile: Optional[str] = None):
+    try:
+        from hermes_cli.team_soul import read_local_soul, save_local_soul
+
+        def _recompute():
+            local = read_local_soul()
+            return save_local_soul(str(local.get("content") or ""))
+
+        return _call_with_profile_home(profile, _recompute)
+    except Exception as e:
+        _log.exception("POST /api/soul/recompute failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/cloud-backup/status")
+async def api_cloud_backup_status(resource: str | None = None, profile: Optional[str] = None):
+    try:
+        from hermes_cli.cloud_backup import cloud_backup_status, list_cloud_backups
+
+        def _status():
+            status = cloud_backup_status(print_fn=lambda _: None)
+            if resource:
+                status["resource"] = resource
+                status["history"] = list_cloud_backups(resource)
+            return status
+
+        return _call_with_profile_home(profile, _status)
+    except Exception as e:
+        _log.exception("GET /api/cloud-backup/status failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/cloud-backup/run")
+async def api_cloud_backup_run(body: CloudBackupRunBody, profile: Optional[str] = None):
+    try:
+        from hermes_cli.cloud_backup import run_cloud_backup_now
+
+        return _call_with_profile_home(profile, run_cloud_backup_now, body.resource, print_fn=lambda _: None)
+    except Exception as e:
+        _log.exception("POST /api/cloud-backup/run failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/cloud-backup/schedule")
+async def api_cloud_backup_schedule(body: CloudBackupScheduleBody, profile: Optional[str] = None):
+    try:
+        from hermes_cli.cloud_backup import schedule_cloud_backup
+
+        return _call_with_profile_home(
+            profile,
+            schedule_cloud_backup,
+            body.resource,
+            body.cadence,
+            print_fn=lambda _: None,
+        )
+    except Exception as e:
+        _log.exception("POST /api/cloud-backup/schedule failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ---------------------------------------------------------------------------
